@@ -1,0 +1,4903 @@
+/*
+ * File management support
+ *
+ * This file is part of System Informer.
+ */
+
+#ifndef _NTIOAPI_H
+#define _NTIOAPI_H
+
+//
+// Sharing mode
+//
+
+#define FILE_SHARE_NONE                 0x00000000
+#define FILE_SHARE_READ                 0x00000001
+#define FILE_SHARE_WRITE                0x00000002
+#define FILE_SHARE_DELETE               0x00000004
+
+//
+// Create disposition
+//
+
+#define FILE_DISPOSITION_NONE               0x00000000
+/**
+ * If the file already exists, replace it with the given file.
+ * If it does not, create the given file.
+ */
+#define FILE_SUPERSEDE                      0x00000000
+/**
+ * If the file already exists, open it instead of creating a new file.
+ * If it does not, fail the request and do not create a new file.
+ */
+#define FILE_OPEN                           0x00000001
+/**
+ * If the file already exists, fail the request and do not create or open the given file.
+ * If it does not, create the given file.
+ */
+#define FILE_CREATE                         0x00000002
+/**
+ * If the file already exists, open it.
+ * If it does not, create the given file.
+ */
+#define FILE_OPEN_IF                        0x00000003
+/**
+ * If the file already exists, open it and overwrite it.
+ * If it does not, fail the request.
+ */
+#define FILE_OVERWRITE                      0x00000004
+/**
+ * If the file already exists, open it and overwrite it.
+ * If it does not, create the given file.
+ */
+#define FILE_OVERWRITE_IF                   0x00000005
+#define FILE_MAXIMUM_DISPOSITION            0x00000005
+
+//
+// Create/open flags
+//
+
+/**
+ * The file being created or opened is a directory file.
+ * With this flag, the CreateDisposition parameter must be set to FILE_CREATE, FILE_OPEN, or FILE_OPEN_IF.
+ * With this flag, other compatible CreateOptions flags include only FILE_SYNCHRONOUS_IO_ALERT,
+ * FILE_SYNCHRONOUS_IO_NONALERT, FILE_WRITE_THROUGH, FILE_OPEN_FOR_BACKUP_INTENT, and FILE_OPEN_BY_FILE_ID.
+ */
+#define FILE_DIRECTORY_FILE                 0x00000001
+/**
+ * Applications that write data to the file must actually transfer the data into the file before any
+ * requested write operation is considered complete.
+ * This flag is automatically set if the CreateOptions flag FILE_NO_INTERMEDIATE_BUFFERING is set.
+ */
+#define FILE_WRITE_THROUGH                  0x00000002
+/**
+ * All accesses to the file are sequential.
+ */
+#define FILE_SEQUENTIAL_ONLY                0x00000004
+/**
+ * The file cannot be cached or buffered in a driver's internal buffers.
+ * This flag is incompatible with the DesiredAccess FILE_APPEND_DATA flag.
+ */
+#define FILE_NO_INTERMEDIATE_BUFFERING      0x00000008
+/**
+ * All operations on the file are performed synchronously.
+ * Any wait on behalf of the caller is subject to premature termination from alerts.
+ * This flag also causes the I/O system to maintain the file position context.
+ * If this flag is set, the DesiredAccess SYNCHRONIZE flag also must be set.
+ */
+#define FILE_SYNCHRONOUS_IO_ALERT           0x00000010
+/**
+ * All operations on the file are performed synchronously.
+ * Waits in the system to synchronize I/O queuing and completion are not subject to alerts.
+ * This flag also causes the I/O system to maintain the file position context.
+ * If this flag is set, the DesiredAccess SYNCHRONIZE flag also must be set.
+ */
+#define FILE_SYNCHRONOUS_IO_NONALERT        0x00000020
+/**
+ * The file being opened must not be a directory file or this call fails.
+ * The file object being opened can represent a data file, a logical, virtual, or physical device, or a volume.
+ */
+#define FILE_NON_DIRECTORY_FILE             0x00000040
+/**
+ * Create a tree connection for this file in order to open it over the network.
+ * This flag is not used by device and intermediate drivers.
+ */
+#define FILE_CREATE_TREE_CONNECTION         0x00000080
+/**
+ * Complete this operation immediately with an alternate success code of STATUS_OPLOCK_BREAK_IN_PROGRESS
+ * if the target file is oplocked, rather than blocking the caller's thread.
+ * If the file is oplocked, another caller already has access to the file.
+ * This flag is not used by device and intermediate drivers.
+ */
+#define FILE_COMPLETE_IF_OPLOCKED           0x00000100
+/**
+ * If the extended attributes on an existing file being opened indicate that the caller must understand
+ * EAs to properly interpret the file, fail this request because the caller does not understand how to
+ * deal with EAs.
+ * This flag is irrelevant for device and intermediate drivers.
+ */
+#define FILE_NO_EA_KNOWLEDGE                0x00000200
+/**
+ * Open a remote instance of a file object, rather than attempting to reuse or
+ * collapse it into an existing local or cached file object.
+ */
+#define FILE_OPEN_REMOTE_INSTANCE           0x00000400
+/**
+ * Accesses to the file can be random, so no sequential read-ahead operations should be performed on
+ * the file by FSDs or the system.
+ */
+#define FILE_RANDOM_ACCESS                  0x00000800
+/**
+ * Delete the file when the last handle to it is passed to NtClose.
+ * If this flag is set, the DELETE flag must be set in the DesiredAccess parameter.
+ */
+#define FILE_DELETE_ON_CLOSE                0x00001000
+/**
+ * The file name specified by the ObjectAttributes parameter includes the 8-byte file reference number
+ * for the file.
+ * This number is assigned by and specific to the particular file system.
+ * If the file is a reparse point, the file name will also include the name of a device.
+ * Note that the FAT file system does not support this flag.
+ * This flag is not used by device and intermediate drivers.
+ */
+#define FILE_OPEN_BY_FILE_ID                0x00002000
+/**
+ * The file is being opened for backup intent.
+ * Therefore, the system should check for certain access rights and grant the caller the appropriate
+ * access to the file before checking the DesiredAccess parameter against the file's security descriptor.
+ * This flag is not used by device and intermediate drivers.
+ */
+#define FILE_OPEN_FOR_BACKUP_INTENT         0x00004000
+/**
+ * Suppress inheritance of FILE_ATTRIBUTE_COMPRESSED from the parent directory.
+ * This allows creation of a non-compressed file in a directory that is marked compressed.
+ */
+#define FILE_NO_COMPRESSION                 0x00008000
+/**
+ * The file is being opened and an opportunistic lock on the file is being requested as a single atomic operation.
+ * The file system checks for oplocks before it performs the create operation and fails the create with
+ * STATUS_CANNOT_BREAK_OPLOCK if the result would break an existing oplock.
+ */
+#define FILE_OPEN_REQUIRING_OPLOCK          0x00010000
+/**
+ * When opening an existing file, if FILE_SHARE_READ is not specified and file system access checks
+ * would not grant the caller write access to the file, fail this open with STATUS_ACCESS_DENIED.
+ * This was default behavior prior to Windows 7.
+ */
+#define FILE_DISALLOW_EXCLUSIVE             0x00020000
+/**
+ * The client opening the file or device is session aware and per session access is validated if necessary.
+ */
+#define FILE_SESSION_AWARE                  0x00040000
+/**
+ * Allows an application to request a filter opportunistic lock to prevent other applications from
+ * getting share violations.
+ * If there are already open handles, the create request fails with STATUS_OPLOCK_NOT_GRANTED.
+ */
+#define FILE_RESERVE_OPFILTER               0x00100000
+/**
+ * Open a file with a reparse point and bypass normal reparse point processing for the file.
+ */
+#define FILE_OPEN_REPARSE_POINT             0x00200000
+/**
+ * Instructs any filters that perform offline storage or virtualization to not recall the contents of
+ * the file as a result of this open.
+ */
+#define FILE_OPEN_NO_RECALL                 0x00400000
+/**
+ * Instructs the file system to capture the user associated with the calling thread.
+ * Subsequent calls to FltQueryVolumeInformation or ZwQueryVolumeInformationFile using the returned handle
+ * use the captured user, rather than the calling user at that time, to compute available free space.
+ * This applies to FileFsSizeInformation, FileFsFullSizeInformation, and FileFsFullSizeInformationEx.
+ */
+#define FILE_OPEN_FOR_FREE_SPACE_QUERY      0x00800000
+/**
+ * Create the tree connection with write-through semantics.
+ */
+#define TREE_CONNECT_WRITE_THROUGH          0x00000002
+/**
+ * Create the tree connection without client-side buffering.
+ */
+#define TREE_CONNECT_NO_CLIENT_BUFFERING    0x00000008
+
+//
+// Extended create/open flags
+//
+
+#define FILE_CONTAINS_EXTENDED_CREATE_INFORMATION   0x10000000
+#define FILE_VALID_EXTENDED_OPTION_FLAGS            0x10000000
+
+/**
+ * The EXTENDED_CREATE_DUAL_OPLOCK_KEYS structure contains the parent and target oplock keys for an extended create operation.
+ */
+typedef struct _EXTENDED_CREATE_DUAL_OPLOCK_KEYS
+{
+    /**
+     * Parent oplock key. All-zero if not set.
+     */
+    GUID ParentOplockKey;
+    /**
+     * Target oplock key. All-zero if not set.
+     */
+    GUID TargetOplockKey;
+} EXTENDED_CREATE_DUAL_OPLOCK_KEYS, *PEXTENDED_CREATE_DUAL_OPLOCK_KEYS;
+
+/**
+ * The EXTENDED_CREATE_INFORMATION structure contains extended information for a create operation.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_extended_create_information
+ */
+typedef struct _EXTENDED_CREATE_INFORMATION
+{
+    LONGLONG ExtendedCreateFlags;
+    PVOID EaBuffer;
+    ULONG EaLength;
+    //PEXTENDED_CREATE_DUAL_OPLOCK_KEYS DualOplockKeys; // since 24H2
+} EXTENDED_CREATE_INFORMATION, *PEXTENDED_CREATE_INFORMATION;
+
+/**
+ * The EXTENDED_CREATE_INFORMATION_32 structure contains extended information for a 32-bit create operation.
+ */
+typedef struct _EXTENDED_CREATE_INFORMATION_32
+{
+    LONGLONG ExtendedCreateFlags;
+    void* POINTER_32 EaBuffer;
+    ULONG EaLength;
+    //PEXTENDED_CREATE_DUAL_OPLOCK_KEYS POINTER_32 DualOplockKeys; // since 24H2
+} EXTENDED_CREATE_INFORMATION_32, *PEXTENDED_CREATE_INFORMATION_32;
+
+#define EX_CREATE_FLAG_FILE_SOURCE_OPEN_FOR_COPY 0x00000001
+#define EX_CREATE_FLAG_FILE_DEST_OPEN_FOR_COPY   0x00000002
+
+#define FILE_VALID_OPTION_FLAGS             0x00ffffff
+#define FILE_VALID_PIPE_OPTION_FLAGS        0x00000032
+#define FILE_VALID_MAILSLOT_OPTION_FLAGS    0x00000032
+#define FILE_VALID_SET_FLAGS                0x00000036
+
+#define FILE_COPY_STRUCTURED_STORAGE        0x00000041
+#define FILE_STRUCTURED_STORAGE             0x00000441
+
+//
+// I/O status information values for NtCreateFile/NtOpenFile
+//
+
+/**
+ * An existing file was deleted and a new file was created in its place.
+ */
+#define FILE_SUPERSEDED                 0x00000000
+/**
+ * An existing file was opened.
+ */
+#define FILE_OPENED                     0x00000001
+/**
+ * A new file was created.
+ */
+#define FILE_CREATED                    0x00000002
+/**
+ * An existing file was overwritten.
+ */
+#define FILE_OVERWRITTEN                0x00000003
+/**
+ * The file already exists.
+ */
+#define FILE_EXISTS                     0x00000004
+/**
+ * The file does not exist.
+ */
+#define FILE_DOES_NOT_EXIST             0x00000005
+
+//
+// Special ByteOffset parameters
+//
+
+#define FILE_WRITE_TO_END_OF_FILE       0xffffffff
+#define FILE_USE_FILE_POINTER_POSITION  0xfffffffe
+
+//
+// Special Timestamp values
+//
+
+#define FILE_TIMESTAMP_UPDATE_DISABLE   ((LONGLONG)-1LL)
+#define FILE_TIMESTAMP_UPDATE_ENABLE    ((LONGLONG)-2LL)
+
+//
+// Alignment requirement values
+//
+
+#define FILE_BYTE_ALIGNMENT             0x00000000
+#define FILE_WORD_ALIGNMENT             0x00000001
+#define FILE_LONG_ALIGNMENT             0x00000003
+#define FILE_QUAD_ALIGNMENT             0x00000007
+#define FILE_OCTA_ALIGNMENT             0x0000000f
+#define FILE_32_BYTE_ALIGNMENT          0x0000001f
+#define FILE_64_BYTE_ALIGNMENT          0x0000003f
+#define FILE_128_BYTE_ALIGNMENT         0x0000007f
+#define FILE_256_BYTE_ALIGNMENT         0x000000ff
+#define FILE_512_BYTE_ALIGNMENT         0x000001ff
+
+//
+// Maximum length of a filename string
+//
+
+#define DOS_MAX_COMPONENT_LENGTH 255
+#define DOS_MAX_PATH_LENGTH (DOS_MAX_COMPONENT_LENGTH + 5)
+
+#define MAXIMUM_FILENAME_LENGTH 256
+
+//
+// Standard attributes
+//
+
+#define FILE_ATTRIBUTE_READONLY                 0x00000001
+#define FILE_ATTRIBUTE_HIDDEN                   0x00000002
+#define FILE_ATTRIBUTE_SYSTEM                   0x00000004
+#define FILE_ATTRIBUTE_DIRECTORY                0x00000010
+#define FILE_ATTRIBUTE_ARCHIVE                  0x00000020
+#define FILE_ATTRIBUTE_DEVICE                   0x00000040
+#define FILE_ATTRIBUTE_NORMAL                   0x00000080
+#define FILE_ATTRIBUTE_TEMPORARY                0x00000100
+#define FILE_ATTRIBUTE_SPARSE_FILE              0x00000200
+#define FILE_ATTRIBUTE_REPARSE_POINT            0x00000400
+#define FILE_ATTRIBUTE_COMPRESSED               0x00000800
+#define FILE_ATTRIBUTE_OFFLINE                  0x00001000
+#define FILE_ATTRIBUTE_NOT_CONTENT_INDEXED      0x00002000
+#define FILE_ATTRIBUTE_ENCRYPTED                0x00004000
+#define FILE_ATTRIBUTE_INTEGRITY_STREAM         0x00008000
+#define FILE_ATTRIBUTE_VIRTUAL                  0x00010000
+#define FILE_ATTRIBUTE_NO_SCRUB_DATA            0x00020000
+#define FILE_ATTRIBUTE_EA                       0x00040000
+#define FILE_ATTRIBUTE_PINNED                   0x00080000
+#define FILE_ATTRIBUTE_UNPINNED                 0x00100000
+#define FILE_ATTRIBUTE_RECALL_ON_OPEN           0x00040000
+#define FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS    0x00400000
+
+//
+// Extended attributes
+//
+
+#define FILE_NEED_EA                    0x00000080
+
+#define FILE_EA_TYPE_BINARY             0xfffe
+#define FILE_EA_TYPE_ASCII              0xfffd
+#define FILE_EA_TYPE_BITMAP             0xfffb
+#define FILE_EA_TYPE_METAFILE           0xfffa
+#define FILE_EA_TYPE_ICON               0xfff9
+#define FILE_EA_TYPE_EA                 0xffee
+#define FILE_EA_TYPE_MVMT               0xffdf
+#define FILE_EA_TYPE_MVST               0xffde
+#define FILE_EA_TYPE_ASN1               0xffdd
+#define FILE_EA_TYPE_FAMILY_IDS         0xff01
+
+//
+// Device characteristics
+//
+
+#define FILE_REMOVABLE_MEDIA                        0x00000001
+#define FILE_READ_ONLY_DEVICE                       0x00000002
+#define FILE_FLOPPY_DISKETTE                        0x00000004
+#define FILE_WRITE_ONCE_MEDIA                       0x00000008
+#define FILE_REMOTE_DEVICE                          0x00000010
+#define FILE_DEVICE_IS_MOUNTED                      0x00000020
+#define FILE_VIRTUAL_VOLUME                         0x00000040
+#define FILE_AUTOGENERATED_DEVICE_NAME              0x00000080
+#define FILE_DEVICE_SECURE_OPEN                     0x00000100
+#define FILE_CHARACTERISTIC_PNP_DEVICE              0x00000800
+#define FILE_CHARACTERISTIC_TS_DEVICE               0x00001000
+#define FILE_CHARACTERISTIC_WEBDAV_DEVICE           0x00002000
+#define FILE_CHARACTERISTIC_CSV                     0x00010000
+#define FILE_DEVICE_ALLOW_APPCONTAINER_TRAVERSAL    0x00020000
+#define FILE_PORTABLE_DEVICE                        0x00040000
+#define FILE_REMOTE_DEVICE_VSMB                     0x00080000
+#define FILE_DEVICE_REQUIRE_SECURITY_CHECK          0x00100000
+
+//
+// Named pipe values
+//
+
+// NamedPipeType for NtCreateNamedPipeFile
+#define FILE_PIPE_BYTE_STREAM_TYPE      0x00000000
+#define FILE_PIPE_MESSAGE_TYPE          0x00000001
+#define FILE_PIPE_ACCEPT_REMOTE_CLIENTS 0x00000000
+#define FILE_PIPE_REJECT_REMOTE_CLIENTS 0x00000002
+#define FILE_PIPE_TYPE_VALID_MASK       0x00000003
+
+// CompletionMode for NtCreateNamedPipeFile
+#define FILE_PIPE_QUEUE_OPERATION       0x00000000
+#define FILE_PIPE_COMPLETE_OPERATION    0x00000001
+
+// ReadMode for NtCreateNamedPipeFile
+#define FILE_PIPE_BYTE_STREAM_MODE      0x00000000
+#define FILE_PIPE_MESSAGE_MODE          0x00000001
+
+// NamedPipeConfiguration for NtQueryInformationFile
+#define FILE_PIPE_INBOUND               0x00000000
+#define FILE_PIPE_OUTBOUND              0x00000001
+#define FILE_PIPE_FULL_DUPLEX           0x00000002
+
+// NamedPipeState for NtQueryInformationFile
+#define FILE_PIPE_DISCONNECTED_STATE    0x00000001
+#define FILE_PIPE_LISTENING_STATE       0x00000002
+#define FILE_PIPE_CONNECTED_STATE       0x00000003
+#define FILE_PIPE_CLOSING_STATE         0x00000004
+
+// NamedPipeEnd for NtQueryInformationFile
+#define FILE_PIPE_CLIENT_END            0x00000000
+#define FILE_PIPE_SERVER_END            0x00000001
+
+// Win32 pipe instance limit (0xff)
+#define FILE_PIPE_UNLIMITED_INSTANCES   0xffffffff
+
+//
+// Mailslot values
+//
+
+#define MAILSLOT_SIZE_AUTO 0
+
+//
+// I/O Status Blocks
+//
+
+/**
+ * A driver sets an IRP's I/O status block to indicate the final status of an I/O request, before calling IoCompleteRequest for the IRP.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_io_status_block
+ */
+typedef struct _IO_STATUS_BLOCK
+{
+    union
+    {
+        NTSTATUS Status;
+        PVOID Pointer;
+    };
+    ULONG_PTR Information;
+} IO_STATUS_BLOCK, *PIO_STATUS_BLOCK;
+
+/**
+ * An asynchronous procedure call (APC) is a function that executes asynchronously in the context of a particular thread.
+ * When an APC is queued to a thread, the system issues a software interrupt. The next time the thread is scheduled, it will run the APC function.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/sync/asynchronous-procedure-calls
+ */
+typedef _Function_class_(IO_APC_ROUTINE)
+VOID NTAPI IO_APC_ROUTINE(
+    _In_ PVOID ApcContext,
+    _In_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ ULONG Reserved
+    );
+typedef IO_APC_ROUTINE* PIO_APC_ROUTINE;
+
+//
+// NtQueryInformationFile/NtSetInformationFile types
+//
+
+/**
+ * The FILE_INFORMATION_CLASS enumeration type specifies the type of file information to be queried or set.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_file_information_class
+ */
+typedef enum _FILE_INFORMATION_CLASS
+{
+    FileDirectoryInformation = 1,                   // q: FILE_DIRECTORY_INFORMATION (requires FILE_LIST_DIRECTORY) (NtQueryDirectoryFile[Ex])
+    FileFullDirectoryInformation,                   // q: FILE_FULL_DIR_INFORMATION (requires FILE_LIST_DIRECTORY) (NtQueryDirectoryFile[Ex])
+    FileBothDirectoryInformation,                   // q: FILE_BOTH_DIR_INFORMATION (requires FILE_LIST_DIRECTORY) (NtQueryDirectoryFile[Ex])
+    FileBasicInformation,                           // qs: FILE_BASIC_INFORMATION (q: requires FILE_READ_ATTRIBUTES; s: requires FILE_WRITE_ATTRIBUTES)
+    FileStandardInformation,                        // q: FILE_STANDARD_INFORMATION, FILE_STANDARD_INFORMATION_EX
+    FileInternalInformation,                        // q: FILE_INTERNAL_INFORMATION
+    FileEaInformation,                              // q: FILE_EA_INFORMATION (requires FILE_READ_EA)
+    FileAccessInformation,                          // q: FILE_ACCESS_INFORMATION
+    FileNameInformation,                            // q: FILE_NAME_INFORMATION
+    FileRenameInformation,                          // s: FILE_RENAME_INFORMATION (requires DELETE) // 10
+    FileLinkInformation,                            // s: FILE_LINK_INFORMATION
+    FileNamesInformation,                           // q: FILE_NAMES_INFORMATION (requires FILE_LIST_DIRECTORY) (NtQueryDirectoryFile[Ex])
+    FileDispositionInformation,                     // s: FILE_DISPOSITION_INFORMATION (requires DELETE)
+    FilePositionInformation,                        // qs: FILE_POSITION_INFORMATION (q: requires FILE_READ_ATTRIBUTES; s: requires FILE_WRITE_ATTRIBUTES)
+    FileFullEaInformation,                          // q: FILE_FULL_EA_INFORMATION (requires FILE_READ_EA)
+    FileModeInformation,                            // qs: FILE_MODE_INFORMATION (q: requires FILE_READ_ATTRIBUTES; s: requires FILE_WRITE_ATTRIBUTES)
+    FileAlignmentInformation,                       // q: FILE_ALIGNMENT_INFORMATION
+    FileAllInformation,                             // q: FILE_ALL_INFORMATION
+    FileAllocationInformation,                      // s: FILE_ALLOCATION_INFORMATION (requires FILE_WRITE_DATA)
+    FileEndOfFileInformation,                       // s: FILE_END_OF_FILE_INFORMATION (requires FILE_WRITE_DATA) // 20
+    FileAlternateNameInformation,                   // q: FILE_NAME_INFORMATION
+    FileStreamInformation,                          // q: FILE_STREAM_INFORMATION
+    FilePipeInformation,                            // qs: FILE_PIPE_INFORMATION (q: requires FILE_READ_ATTRIBUTES; s: requires FILE_WRITE_ATTRIBUTES)
+    FilePipeLocalInformation,                       // q: FILE_PIPE_LOCAL_INFORMATION
+    FilePipeRemoteInformation,                      // qs: FILE_PIPE_REMOTE_INFORMATION (q: requires FILE_READ_ATTRIBUTES; s: requires FILE_WRITE_ATTRIBUTES)
+    FileMailslotQueryInformation,                   // q: FILE_MAILSLOT_QUERY_INFORMATION
+    FileMailslotSetInformation,                     // s: FILE_MAILSLOT_SET_INFORMATION
+    FileCompressionInformation,                     // q: FILE_COMPRESSION_INFORMATION
+    FileObjectIdInformation,                        // q: FILE_OBJECTID_INFORMATION (requires FILE_LIST_DIRECTORY) (NtQueryDirectoryFile[Ex])
+    FileCompletionInformation,                      // s: FILE_COMPLETION_INFORMATION // 30
+    FileMoveClusterInformation,                     // s: FILE_MOVE_CLUSTER_INFORMATION (requires FILE_WRITE_DATA)
+    FileQuotaInformation,                           // q: FILE_QUOTA_INFORMATION (requires FILE_LIST_DIRECTORY) (NtQueryDirectoryFile[Ex])
+    FileReparsePointInformation,                    // q: FILE_REPARSE_POINT_INFORMATION (requires FILE_LIST_DIRECTORY) (NtQueryDirectoryFile[Ex])
+    FileNetworkOpenInformation,                     // q: FILE_NETWORK_OPEN_INFORMATION
+    FileAttributeTagInformation,                    // q: FILE_ATTRIBUTE_TAG_INFORMATION
+    FileTrackingInformation,                        // s: FILE_TRACKING_INFORMATION (requires FILE_WRITE_DATA)
+    FileIdBothDirectoryInformation,                 // q: FILE_ID_BOTH_DIR_INFORMATION (requires FILE_LIST_DIRECTORY) (NtQueryDirectoryFile[Ex])
+    FileIdFullDirectoryInformation,                 // q: FILE_ID_FULL_DIR_INFORMATION (requires FILE_LIST_DIRECTORY) (NtQueryDirectoryFile[Ex])
+    FileValidDataLengthInformation,                 // s: FILE_VALID_DATA_LENGTH_INFORMATION (requires FILE_WRITE_DATA and/or SeManageVolumePrivilege)
+    FileShortNameInformation,                       // s: FILE_NAME_INFORMATION (requires DELETE) // 40
+    FileIoCompletionNotificationInformation,        // qs: FILE_IO_COMPLETION_NOTIFICATION_INFORMATION (q: requires FILE_READ_ATTRIBUTES; s: requires FILE_WRITE_ATTRIBUTES) // since VISTA
+    FileIoStatusBlockRangeInformation,              // s: FILE_IOSTATUSBLOCK_RANGE_INFORMATION (requires SeLockMemoryPrivilege)
+    FileIoPriorityHintInformation,                  // qs: FILE_IO_PRIORITY_HINT_INFORMATION, FILE_IO_PRIORITY_HINT_INFORMATION_EX (q: requires FILE_READ_DATA)
+    FileSfioReserveInformation,                     // qs: FILE_SFIO_RESERVE_INFORMATION (q: requires FILE_READ_DATA)
+    FileSfioVolumeInformation,                      // q: FILE_SFIO_VOLUME_INFORMATION
+    FileHardLinkInformation,                        // q: FILE_LINKS_INFORMATION
+    FileProcessIdsUsingFileInformation,             // q: FILE_PROCESS_IDS_USING_FILE_INFORMATION
+    FileNormalizedNameInformation,                  // q: FILE_NAME_INFORMATION
+    FileNetworkPhysicalNameInformation,             // q: FILE_NETWORK_PHYSICAL_NAME_INFORMATION
+    FileIdGlobalTxDirectoryInformation,             // q: FILE_ID_GLOBAL_TX_DIR_INFORMATION (requires FILE_LIST_DIRECTORY) (NtQueryDirectoryFile[Ex]) // since WIN7 // 50
+    FileIsRemoteDeviceInformation,                  // q: FILE_IS_REMOTE_DEVICE_INFORMATION
+    FileUnusedInformation,                          // q:
+    FileNumaNodeInformation,                        // q: FILE_NUMA_NODE_INFORMATION
+    FileStandardLinkInformation,                    // q: FILE_STANDARD_LINK_INFORMATION
+    FileRemoteProtocolInformation,                  // q: FILE_REMOTE_PROTOCOL_INFORMATION
+    FileRenameInformationBypassAccessCheck,         // s: FILE_RENAME_INFORMATION // (kernel-mode only) // since WIN8
+    FileLinkInformationBypassAccessCheck,           // s: FILE_LINK_INFORMATION // (kernel-mode only)
+    FileVolumeNameInformation,                      // q: FILE_VOLUME_NAME_INFORMATION
+    FileIdInformation,                              // q: FILE_ID_INFORMATION
+    FileIdExtdDirectoryInformation,                 // q: FILE_ID_EXTD_DIR_INFORMATION (requires FILE_LIST_DIRECTORY) (NtQueryDirectoryFile[Ex]) // 60
+    FileReplaceCompletionInformation,               // s: FILE_COMPLETION_INFORMATION // since WINBLUE
+    FileHardLinkFullIdInformation,                  // q: FILE_LINK_ENTRY_FULL_ID_INFORMATION // FILE_LINKS_FULL_ID_INFORMATION
+    FileIdExtdBothDirectoryInformation,             // q: FILE_ID_EXTD_BOTH_DIR_INFORMATION (requires FILE_LIST_DIRECTORY) (NtQueryDirectoryFile[Ex]) // since THRESHOLD
+    FileDispositionInformationEx,                   // s: FILE_DISPOSITION_INFO_EX (requires DELETE) // since REDSTONE
+    FileRenameInformationEx,                        // s: FILE_RENAME_INFORMATION_EX
+    FileRenameInformationExBypassAccessCheck,       // s: FILE_RENAME_INFORMATION_EX // (kernel-mode only)
+    FileDesiredStorageClassInformation,             // qs: FILE_DESIRED_STORAGE_CLASS_INFORMATION // since REDSTONE2
+    FileStatInformation,                            // q: FILE_STAT_INFORMATION
+    FileMemoryPartitionInformation,                 // s: FILE_MEMORY_PARTITION_INFORMATION // since REDSTONE3
+    FileStatLxInformation,                          // q: FILE_STAT_LX_INFORMATION (requires FILE_READ_ATTRIBUTES and FILE_READ_EA) // since REDSTONE4 // 70
+    FileCaseSensitiveInformation,                   // qs: FILE_CASE_SENSITIVE_INFORMATION
+    FileLinkInformationEx,                          // s: FILE_LINK_INFORMATION_EX // since REDSTONE5
+    FileLinkInformationExBypassAccessCheck,         // s: FILE_LINK_INFORMATION_EX // (kernel-mode only)
+    FileStorageReserveIdInformation,                // qs: FILE_STORAGE_RESERVE_ID_INFORMATION
+    FileCaseSensitiveInformationForceAccessCheck,   // qs: FILE_CASE_SENSITIVE_INFORMATION
+    FileKnownFolderInformation,                     // qs: FILE_KNOWN_FOLDER_INFORMATION // since WIN11
+    FileStatBasicInformation,                       // qs: FILE_STAT_BASIC_INFORMATION // since 23H2
+    FileId64ExtdDirectoryInformation,               // q: FILE_ID_64_EXTD_DIR_INFORMATION
+    FileId64ExtdBothDirectoryInformation,           // q: FILE_ID_64_EXTD_BOTH_DIR_INFORMATION
+    FileIdAllExtdDirectoryInformation,              // q: FILE_ID_ALL_EXTD_DIR_INFORMATION
+    FileIdAllExtdBothDirectoryInformation,          // q: FILE_ID_ALL_EXTD_BOTH_DIR_INFORMATION
+    FileStreamReservationInformation,               // q: FILE_STREAM_RESERVATION_INFORMATION // since 24H2
+    FileMupProviderInfo,                            // qs: MUP_PROVIDER_INFORMATION
+    FileMaximumInformation
+} FILE_INFORMATION_CLASS, *PFILE_INFORMATION_CLASS;
+
+/**
+ * The FILE_BASIC_INFORMATION structure contains timestamps and basic attributes of a file.
+ * \li If you specify a value of zero for any of the XxxTime members, the file system keeps a file's current value for that time.
+ * \li If you specify a value of -1 for any of the XxxTime members, time stamp updates are disabled for I/O operations performed on the file handle.
+ * \li If you specify a value of -2 for any of the XxxTime members, time stamp updates are enabled for I/O operations performed on the file handle.
+ * \remarks To set the members of this structure, the caller must have FILE_WRITE_ATTRIBUTES access to the file.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_basic_information
+ */
+typedef struct _FILE_BASIC_INFORMATION
+{
+    LARGE_INTEGER CreationTime;         // Specifies the time that the file was created.
+    LARGE_INTEGER LastAccessTime;       // Specifies the time that the file was last accessed.
+    LARGE_INTEGER LastWriteTime;        // Specifies the time that the file was last written to.
+    LARGE_INTEGER ChangeTime;           // Specifies the last time the file was changed.
+    ULONG FileAttributes;               // Specifies one or more FILE_ATTRIBUTE_XXX flags.
+} FILE_BASIC_INFORMATION, *PFILE_BASIC_INFORMATION;
+
+/**
+ * The FILE_STANDARD_INFORMATION structure contains standard information of a file.
+ * \remarks EndOfFile specifies the byte offset to the end of the file.
+ * Because this value is zero-based, it actually refers to the first free byte in the file; that is, it is the offset to the byte immediately following the last valid byte in the file.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_standard_information
+ */
+typedef struct _FILE_STANDARD_INFORMATION
+{
+    LARGE_INTEGER AllocationSize;       // The file allocation size in bytes. Usually, this value is a multiple of the sector or cluster size of the underlying physical device.
+    LARGE_INTEGER EndOfFile;            // The end of file location as a byte offset.
+    ULONG NumberOfLinks;                // The number of hard links to the file.
+    BOOLEAN DeletePending;              // The delete pending status. TRUE indicates that a file deletion has been requested.
+    BOOLEAN Directory;                  // The file directory status. TRUE indicates the file object represents a directory.
+} FILE_STANDARD_INFORMATION, *PFILE_STANDARD_INFORMATION;
+
+/**
+ * The FILE_STANDARD_INFORMATION_EX structure is used as an argument to routines that query or set file information.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_standard_information_ex
+ */
+typedef struct _FILE_STANDARD_INFORMATION_EX
+{
+    LARGE_INTEGER AllocationSize;
+    LARGE_INTEGER EndOfFile;
+    ULONG NumberOfLinks;
+    BOOLEAN DeletePending;
+    BOOLEAN Directory;
+    BOOLEAN AlternateStream;
+    BOOLEAN MetadataAttribute;
+} FILE_STANDARD_INFORMATION_EX, *PFILE_STANDARD_INFORMATION_EX;
+
+/**
+ * The FILE_INTERNAL_INFORMATION structure is used to query for the file system's 8-byte file reference number for a file.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_internal_information
+ * \remark The IndexNumber member is the same as the FileId member of the FILE_ID_BOTH_DIR_INFORMATION and FILE_ID_FULL_DIR_INFORMATION structures.
+ */
+typedef struct _FILE_INTERNAL_INFORMATION
+{
+    union
+    {
+        ULARGE_INTEGER IndexNumber;
+        struct
+        {
+            ULONGLONG MftRecordIndex : 48; // rev
+            ULONGLONG SequenceNumber : 16; // rev
+        };
+    };
+} FILE_INTERNAL_INFORMATION, *PFILE_INTERNAL_INFORMATION;
+
+/**
+ * The FILE_EA_INFORMATION structure is used to query for the size of the extended attributes (EA) for a file.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_ea_information
+ */
+typedef struct _FILE_EA_INFORMATION
+{
+    ULONG EaSize;
+} FILE_EA_INFORMATION, *PFILE_EA_INFORMATION;
+
+/**
+ * The FILE_ACCESS_INFORMATION structure is used to query for or set the access rights of a file.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_access_information
+ */
+typedef struct _FILE_ACCESS_INFORMATION
+{
+    ACCESS_MASK AccessFlags;
+} FILE_ACCESS_INFORMATION, *PFILE_ACCESS_INFORMATION;
+
+/**
+ * The FILE_POSITION_INFORMATION structure is used as an argument to routines that query or set file information.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_position_information
+ */
+typedef struct _FILE_POSITION_INFORMATION
+{
+    LARGE_INTEGER CurrentByteOffset;
+} FILE_POSITION_INFORMATION, *PFILE_POSITION_INFORMATION;
+
+/**
+ * The FILE_MODE_INFORMATION structure is used to query or set the access mode of a file.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_mode_information
+ */
+typedef struct _FILE_MODE_INFORMATION
+{
+    ULONG Mode;
+} FILE_MODE_INFORMATION, *PFILE_MODE_INFORMATION;
+
+/**
+ * The FILE_ALIGNMENT_INFORMATION structure is used to query or set the buffer alignment required by the underlying device.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_alignment_information
+ */
+typedef struct _FILE_ALIGNMENT_INFORMATION
+{
+    ULONG AlignmentRequirement;
+} FILE_ALIGNMENT_INFORMATION, *PFILE_ALIGNMENT_INFORMATION;
+
+/**
+ * The FILE_NAME_INFORMATION structure is used to query or set the file name and/or new short name for a file.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_name_information
+ */
+typedef struct _FILE_NAME_INFORMATION
+{
+    ULONG FileNameLength;
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_NAME_INFORMATION, *PFILE_NAME_INFORMATION;
+
+/**
+ * The FILE_ALL_INFORMATION structure is used as a container for several FILE_XXX_INFORMATION structures.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_all_information
+ */
+typedef struct _FILE_ALL_INFORMATION
+{
+    FILE_BASIC_INFORMATION BasicInformation;
+    FILE_STANDARD_INFORMATION StandardInformation;
+    FILE_INTERNAL_INFORMATION InternalInformation;
+    FILE_EA_INFORMATION EaInformation;
+    FILE_ACCESS_INFORMATION AccessInformation;
+    FILE_POSITION_INFORMATION PositionInformation;
+    FILE_MODE_INFORMATION ModeInformation;
+    FILE_ALIGNMENT_INFORMATION AlignmentInformation;
+    FILE_NAME_INFORMATION NameInformation;
+} FILE_ALL_INFORMATION, *PFILE_ALL_INFORMATION;
+
+/**
+ * The FILE_NETWORK_OPEN_INFORMATION structure is used to query for information that is commonly needed when a file is opened across a network.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_network_open_information
+ */
+typedef struct _FILE_NETWORK_OPEN_INFORMATION
+{
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER AllocationSize;
+    LARGE_INTEGER EndOfFile;
+    ULONG FileAttributes;
+} FILE_NETWORK_OPEN_INFORMATION, *PFILE_NETWORK_OPEN_INFORMATION;
+
+/**
+ * The FILE_ATTRIBUTE_TAG_INFORMATION structure is used to query for attribute and reparse tag information for a file.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_attribute_tag_information
+ */
+typedef struct _FILE_ATTRIBUTE_TAG_INFORMATION
+{
+    ULONG FileAttributes;
+    ULONG ReparseTag;
+} FILE_ATTRIBUTE_TAG_INFORMATION, *PFILE_ATTRIBUTE_TAG_INFORMATION;
+
+/**
+ * The FILE_ALLOCATION_INFORMATION structure is used to set the allocation size for a file.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_allocation_information
+ */
+typedef struct _FILE_ALLOCATION_INFORMATION
+{
+    LARGE_INTEGER AllocationSize;
+} FILE_ALLOCATION_INFORMATION, *PFILE_ALLOCATION_INFORMATION;
+
+/**
+ * The FILE_COMPRESSION_INFORMATION structure describes the state of a compressed data buffer.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_compression_information
+ */
+typedef struct _FILE_COMPRESSION_INFORMATION
+{
+    LARGE_INTEGER CompressedFileSize;
+    USHORT CompressionFormat;
+    UCHAR CompressionUnitShift;
+    UCHAR ChunkShift;
+    UCHAR ClusterShift;
+    UCHAR Reserved[3];
+} FILE_COMPRESSION_INFORMATION, *PFILE_COMPRESSION_INFORMATION;
+
+/**
+ * The FILE_DISPOSITION_INFORMATION structure is used to mark a file for deletion.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_disposition_information
+ */
+typedef struct _FILE_DISPOSITION_INFORMATION
+{
+    BOOLEAN DeleteFile;
+} FILE_DISPOSITION_INFORMATION, *PFILE_DISPOSITION_INFORMATION;
+
+/**
+ * The FILE_END_OF_FILE_INFORMATION structure is used to set end-of-file information for a file.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_end_of_file_information
+ */
+typedef struct _FILE_END_OF_FILE_INFORMATION
+{
+    LARGE_INTEGER EndOfFile;
+} FILE_END_OF_FILE_INFORMATION, *PFILE_END_OF_FILE_INFORMATION;
+
+#define FLAGS_END_OF_FILE_INFO_EX_EXTEND_PAGING             0x00000001
+#define FLAGS_END_OF_FILE_INFO_EX_NO_EXTRA_PAGING_EXTEND    0x00000002
+#define FLAGS_END_OF_FILE_INFO_EX_TIME_CONSTRAINED          0x00000004
+#define FLAGS_DELAY_REASONS_LOG_FILE_FULL                   0x00000001
+#define FLAGS_DELAY_REASONS_BITMAP_SCANNED                  0x00000002
+
+typedef struct _FILE_END_OF_FILE_INFORMATION_EX
+{
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER PagingFileSizeInMM;
+    LARGE_INTEGER PagingFileMaxSize;
+    ULONG Flags;
+} FILE_END_OF_FILE_INFORMATION_EX, *PFILE_END_OF_FILE_INFORMATION_EX;
+
+/**
+ * The FILE_VALID_DATA_LENGTH_INFORMATION structure is used to set the valid data length information for a file.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_valid_data_length_information
+ */
+typedef struct _FILE_VALID_DATA_LENGTH_INFORMATION
+{
+    LARGE_INTEGER ValidDataLength;
+} FILE_VALID_DATA_LENGTH_INFORMATION, *PFILE_VALID_DATA_LENGTH_INFORMATION;
+
+#define FILE_LINK_REPLACE_IF_EXISTS 0x00000001 // since RS5
+#define FILE_LINK_POSIX_SEMANTICS   0x00000002
+
+#define FILE_LINK_SUPPRESS_STORAGE_RESERVE_INHERITANCE  0x00000008
+#define FILE_LINK_NO_INCREASE_AVAILABLE_SPACE           0x00000010
+#define FILE_LINK_NO_DECREASE_AVAILABLE_SPACE           0x00000020
+#define FILE_LINK_PRESERVE_AVAILABLE_SPACE              0x00000030
+#define FILE_LINK_IGNORE_READONLY_ATTRIBUTE             0x00000040
+#define FILE_LINK_FORCE_RESIZE_TARGET_SR                0x00000080 // since 19H1
+#define FILE_LINK_FORCE_RESIZE_SOURCE_SR                0x00000100
+#define FILE_LINK_FORCE_RESIZE_SR                       0x00000180
+
+/**
+ * The FILE_LINK_INFORMATION structure is used to create an NTFS hard link to an existing file.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_link_information
+ */
+typedef struct _FILE_LINK_INFORMATION
+{
+    BOOLEAN ReplaceIfExists;
+    HANDLE RootDirectory;
+    ULONG FileNameLength;
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_LINK_INFORMATION, *PFILE_LINK_INFORMATION;
+
+typedef struct _FILE_LINK_INFORMATION_EX
+{
+    ULONG Flags;
+    HANDLE RootDirectory;
+    ULONG FileNameLength;
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_LINK_INFORMATION_EX, *PFILE_LINK_INFORMATION_EX;
+
+typedef struct _FILE_MOVE_CLUSTER_INFORMATION
+{
+    ULONG ClusterCount;
+    HANDLE RootDirectory;
+    ULONG FileNameLength;
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_MOVE_CLUSTER_INFORMATION, *PFILE_MOVE_CLUSTER_INFORMATION;
+
+/**
+ * The FILE_RENAME_INFORMATION structure is used to rename a file.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information
+ */
+typedef struct _FILE_RENAME_INFORMATION
+{
+    BOOLEAN ReplaceIfExists;
+    HANDLE RootDirectory;
+    ULONG FileNameLength;
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_RENAME_INFORMATION, *PFILE_RENAME_INFORMATION;
+
+#define FILE_RENAME_REPLACE_IF_EXISTS                       0x00000001 // since REDSTONE
+#define FILE_RENAME_POSIX_SEMANTICS                         0x00000002
+#define FILE_RENAME_SUPPRESS_PIN_STATE_INHERITANCE          0x00000004 // since REDSTONE3
+#define FILE_RENAME_SUPPRESS_STORAGE_RESERVE_INHERITANCE    0x00000008 // since REDSTONE5
+#define FILE_RENAME_NO_INCREASE_AVAILABLE_SPACE             0x00000010
+#define FILE_RENAME_NO_DECREASE_AVAILABLE_SPACE             0x00000020
+#define FILE_RENAME_PRESERVE_AVAILABLE_SPACE                0x00000030
+#define FILE_RENAME_IGNORE_READONLY_ATTRIBUTE               0x00000040
+#define FILE_RENAME_FORCE_RESIZE_TARGET_SR                  0x00000080 // since 19H1
+#define FILE_RENAME_FORCE_RESIZE_SOURCE_SR                  0x00000100
+#define FILE_RENAME_FORCE_RESIZE_SR                         0x00000180
+
+/**
+ * The FILE_RENAME_INFORMATION_EX structure is used to rename a file.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information
+ */
+typedef struct _FILE_RENAME_INFORMATION_EX
+{
+    ULONG Flags;
+    HANDLE RootDirectory;
+    ULONG FileNameLength;
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_RENAME_INFORMATION_EX, *PFILE_RENAME_INFORMATION_EX;
+
+/**
+ * The FILE_STREAM_INFORMATION structure contains information about a file stream.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_stream_information
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_STREAM_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG StreamNameLength;
+    LARGE_INTEGER StreamSize;
+    LARGE_INTEGER StreamAllocationSize;
+    _Field_size_bytes_(StreamNameLength) WCHAR StreamName[1];
+} FILE_STREAM_INFORMATION, *PFILE_STREAM_INFORMATION;
+
+/**
+ * The FILE_TRACKING_INFORMATION structure contains information used for tracking file operations.
+ */
+typedef struct _FILE_TRACKING_INFORMATION
+{
+    HANDLE DestinationFile;
+    ULONG ObjectInformationLength;
+    _Field_size_bytes_(ObjectInformationLength) CHAR ObjectInformation[1];
+} FILE_TRACKING_INFORMATION, *PFILE_TRACKING_INFORMATION;
+
+/**
+ * The FILE_COMPLETION_INFORMATION structure contains the port handle and key for an I/O completion port created for a file handle.
+ *
+ * \remarks he FILE_COMPLETION_INFORMATION structure is used to replace the completion information for a port handle set in Port.
+ * Completion information is replaced with the ZwSetInformationFile routine with the FileInformationClass parameter set to FileReplaceCompletionInformation.
+ * The Port and Key members of FILE_COMPLETION_INFORMATION are set to their new values. To remove an existing completion port for a file handle, Port is set to NULL.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_completion_information
+ */
+typedef struct _FILE_COMPLETION_INFORMATION
+{
+    HANDLE Port;
+    PVOID Key;
+} FILE_COMPLETION_INFORMATION, *PFILE_COMPLETION_INFORMATION;
+
+/**
+ * The FILE_PIPE_INFORMATION structure contains information about a named pipe that is not specific to the local or the remote end of the pipe.
+ *
+ * \remarks If ReadMode is set to FILE_PIPE_BYTE_STREAM_MODE, any attempt to change it must fail with a STATUS_INVALID_PARAMETER error code.
+ * When CompletionMode is set to FILE_PIPE_QUEUE_OPERATION, if the pipe is connected to, read to, or written from,
+ * the operation is not completed until there is data to read, all data is written, or a client is connected.
+ * When CompletionMode is set to FILE_PIPE_COMPLETE_OPERATION, if the pipe is being connected to, read to, or written from, the operation is completed immediately.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_pipe_information
+ */
+typedef struct _FILE_PIPE_INFORMATION
+{
+     ULONG ReadMode;
+     ULONG CompletionMode;
+} FILE_PIPE_INFORMATION, *PFILE_PIPE_INFORMATION;
+
+/**
+ * The FILE_PIPE_LOCAL_INFORMATION structure contains information about the local end of a named pipe.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_pipe_local_information
+ */
+typedef struct _FILE_PIPE_LOCAL_INFORMATION
+{
+     ULONG NamedPipeType;
+     ULONG NamedPipeConfiguration;
+     ULONG MaximumInstances;
+     ULONG CurrentInstances;
+     ULONG InboundQuota;
+     ULONG ReadDataAvailable;
+     ULONG OutboundQuota;
+     ULONG WriteQuotaAvailable;
+     ULONG NamedPipeState;
+     ULONG NamedPipeEnd;
+} FILE_PIPE_LOCAL_INFORMATION, *PFILE_PIPE_LOCAL_INFORMATION;
+
+/**
+ * The FILE_PIPE_REMOTE_INFORMATION structure contains information about the remote end of a named pipe.
+ *
+ * \remarks Remote information is not available for local pipes or for the server end of a remote pipe.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_pipe_remote_information
+ */
+typedef struct _FILE_PIPE_REMOTE_INFORMATION
+{
+    LARGE_INTEGER CollectDataTime;  // The maximum amount of time, in 100-nanosecond intervals, that elapses before transmission of data from the client machine to the server.
+    ULONG MaximumCollectionCount;   // The maximum size, in bytes, of data that will be collected on the client machine before transmission to the server.
+} FILE_PIPE_REMOTE_INFORMATION, *PFILE_PIPE_REMOTE_INFORMATION;
+
+/**
+ * The FILE_MAILSLOT_QUERY_INFORMATION structure contains information about a mailslot.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_mailslot_query_information
+ */
+typedef struct _FILE_MAILSLOT_QUERY_INFORMATION
+{
+    ULONG MaximumMessageSize;       // The maximum size, in bytes, of a single message that can be written to the mailslot, or 0 for a message of any size.
+    ULONG MailslotQuota;            // The size, in bytes, of the in-memory pool that is reserved for writes to this mailslot.
+    ULONG NextMessageSize;          // The next message size, in bytes.
+    ULONG MessagesAvailable;        // The total number of messages waiting to be read from the mailslot.
+    LARGE_INTEGER ReadTimeout;      // The time, in 100-nanosecond intervals, that a read operation can wait for a message to be written to the mailslot before a time-out occurs.
+} FILE_MAILSLOT_QUERY_INFORMATION, *PFILE_MAILSLOT_QUERY_INFORMATION;
+
+/**
+ * The FILE_MAILSLOT_SET_INFORMATION structure is used to set a value on a mailslot.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_mailslot_set_information
+ */
+typedef struct _FILE_MAILSLOT_SET_INFORMATION
+{
+    PLARGE_INTEGER ReadTimeout;     // The time, in 100-nanosecond intervals, that a read operation can wait for a message to be written to the mailslot before a time-out occurs.
+} FILE_MAILSLOT_SET_INFORMATION, *PFILE_MAILSLOT_SET_INFORMATION;
+
+/**
+ * The FILE_REPARSE_POINT_INFORMATION structure contains information about a reparse point.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_reparse_point_information
+ */
+typedef struct _FILE_REPARSE_POINT_INFORMATION
+{
+    union
+    {
+        ULARGE_INTEGER FileReference;
+        struct
+        {
+            ULONGLONG MftRecordIndex : 48; // rev
+            ULONGLONG SequenceNumber : 16; // rev
+        };
+    };
+    ULONG Tag;
+} FILE_REPARSE_POINT_INFORMATION, *PFILE_REPARSE_POINT_INFORMATION;
+
+/**
+ * The FILE_LINK_ENTRY_INFORMATION structure contains information about a file link entry.
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_LINK_ENTRY_INFORMATION
+{
+    ULONG NextEntryOffset;
+    LONGLONG ParentFileId; // LARGE_INTEGER
+    ULONG FileNameLength;
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_LINK_ENTRY_INFORMATION, *PFILE_LINK_ENTRY_INFORMATION;
+
+/**
+ * The FILE_LINKS_INFORMATION structure contains information about file links.
+ */
+typedef struct _FILE_LINKS_INFORMATION
+{
+    ULONG BytesNeeded;
+    ULONG EntriesReturned;
+    FILE_LINK_ENTRY_INFORMATION Entry;
+} FILE_LINKS_INFORMATION, *PFILE_LINKS_INFORMATION;
+
+/**
+ * The FILE_NETWORK_PHYSICAL_NAME_INFORMATION structure contains information about the network physical name of a file.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_network_physical_name_information
+ */
+typedef struct _FILE_NETWORK_PHYSICAL_NAME_INFORMATION
+{
+    ULONG FileNameLength;
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_NETWORK_PHYSICAL_NAME_INFORMATION, *PFILE_NETWORK_PHYSICAL_NAME_INFORMATION;
+
+/**
+ * The FILE_STANDARD_LINK_INFORMATION structure contains standard information about a file link.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-file_standard_link_information
+ */
+typedef struct _FILE_STANDARD_LINK_INFORMATION
+{
+    ULONG NumberOfAccessibleLinks;
+    ULONG TotalNumberOfLinks;
+    BOOLEAN DeletePending;
+    BOOLEAN Directory;
+} FILE_STANDARD_LINK_INFORMATION, *PFILE_STANDARD_LINK_INFORMATION;
+
+typedef struct _FILE_SFIO_RESERVE_INFORMATION
+{
+    ULONG RequestsPerPeriod;
+    ULONG Period;
+    BOOLEAN RetryFailures;
+    BOOLEAN Discardable;
+    ULONG RequestSize;
+    ULONG NumOutstandingRequests;
+} FILE_SFIO_RESERVE_INFORMATION, *PFILE_SFIO_RESERVE_INFORMATION;
+
+typedef struct _FILE_SFIO_VOLUME_INFORMATION
+{
+    ULONG MaximumRequestsPerPeriod;
+    ULONG MinimumPeriod;
+    ULONG MinimumTransferSize;
+} FILE_SFIO_VOLUME_INFORMATION, *PFILE_SFIO_VOLUME_INFORMATION;
+
+/**
+ * The IO_PRIORITY_HINT enumeration type specifies the priority hint for an IRP.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_io_priority_hint
+ */
+typedef enum _IO_PRIORITY_HINT
+{
+    IoPriorityVeryLow,     // Defragging, content indexing and other background I/Os.
+    IoPriorityLow,         // Prefetching for applications.
+    IoPriorityNormal,      // Normal I/Os.
+    IoPriorityHigh,        // Used by filesystems for checkpoint I/O.
+    IoPriorityCritical,    // Used by memory manager. Not available for applications.
+    MaxIoPriorityTypes
+} IO_PRIORITY_HINT;
+
+/**
+ * The FILE_IO_PRIORITY_HINT_INFORMATION structure is used to query and set the default IRP priority hint for requests on the specified file handle.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_io_priority_hint_information
+ */
+typedef struct DECLSPEC_ALIGN(8) _FILE_IO_PRIORITY_HINT_INFORMATION
+{
+    IO_PRIORITY_HINT PriorityHint;
+} FILE_IO_PRIORITY_HINT_INFORMATION, *PFILE_IO_PRIORITY_HINT_INFORMATION;
+
+/**
+ * The FILE_IO_PRIORITY_HINT_INFORMATION_EX structure is used to query and set the default IRP priority hint for requests on the specified file handle.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_io_priority_hint_information
+ */
+typedef struct _FILE_IO_PRIORITY_HINT_INFORMATION_EX
+{
+    IO_PRIORITY_HINT PriorityHint;
+    BOOLEAN BoostOutstanding;
+} FILE_IO_PRIORITY_HINT_INFORMATION_EX, *PFILE_IO_PRIORITY_HINT_INFORMATION_EX;
+
+/**
+ * FILE_SKIP_COMPLETION_PORT_ON_SUCCESS
+ * Skip posting a completion packet to the I/O completion port if the operation completes successfully.
+ */
+#define FILE_SKIP_COMPLETION_PORT_ON_SUCCESS 0x1
+
+/**
+ * FILE_SKIP_SET_EVENT_ON_HANDLE
+ * Skip setting the event on the file handle when the operation completes.
+ */
+#define FILE_SKIP_SET_EVENT_ON_HANDLE 0x2
+
+/**
+ * FILE_SKIP_SET_USER_EVENT_ON_FAST_IO
+ * Skip setting the user event when a fast I/O operation completes.
+ */
+#define FILE_SKIP_SET_USER_EVENT_ON_FAST_IO 0x4
+
+typedef struct _FILE_IO_COMPLETION_NOTIFICATION_INFORMATION
+{
+    ULONG Flags;
+} FILE_IO_COMPLETION_NOTIFICATION_INFORMATION, *PFILE_IO_COMPLETION_NOTIFICATION_INFORMATION;
+
+typedef struct _FILE_PROCESS_IDS_USING_FILE_INFORMATION
+{
+    ULONG NumberOfProcessIdsInList;
+    _Field_size_(NumberOfProcessIdsInList) HANDLE ProcessIdList[1];
+} FILE_PROCESS_IDS_USING_FILE_INFORMATION, *PFILE_PROCESS_IDS_USING_FILE_INFORMATION;
+
+/**
+ * The FILE_IS_REMOTE_DEVICE_INFORMATION structure indicates whether the file system that contains the file is a remote file system.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_is_remote_device_information
+ */
+typedef struct _FILE_IS_REMOTE_DEVICE_INFORMATION
+{
+    BOOLEAN IsRemote; // A value that indicates whether the file system that contains the file is a remote file system.
+} FILE_IS_REMOTE_DEVICE_INFORMATION, *PFILE_IS_REMOTE_DEVICE_INFORMATION;
+
+typedef struct _FILE_NUMA_NODE_INFORMATION
+{
+    USHORT NodeNumber;
+} FILE_NUMA_NODE_INFORMATION, *PFILE_NUMA_NODE_INFORMATION;
+
+typedef struct _FILE_IOSTATUSBLOCK_RANGE_INFORMATION
+{
+    PUCHAR IoStatusBlockRange;
+    ULONG Length;
+} FILE_IOSTATUSBLOCK_RANGE_INFORMATION, *PFILE_IOSTATUSBLOCK_RANGE_INFORMATION;
+
+// Win32 FILE_REMOTE_PROTOCOL_INFO
+typedef struct _FILE_REMOTE_PROTOCOL_INFORMATION
+{
+    // Structure Version
+    USHORT StructureVersion;     // 1 for Win7, 2 for Win8 SMB3, 3 for Blue SMB3, 4 for RS5
+    USHORT StructureSize;        // sizeof(FILE_REMOTE_PROTOCOL_INFORMATION)
+
+    ULONG Protocol;             // Protocol (WNNC_NET_*) defined in winnetwk.h or ntifs.h.
+
+    // Protocol Version & Type
+    USHORT ProtocolMajorVersion;
+    USHORT ProtocolMinorVersion;
+    USHORT ProtocolRevision;
+
+    USHORT Reserved;
+
+    // Protocol-Generic Information
+    ULONG Flags;
+
+    struct
+    {
+        ULONG Reserved[8];
+    } GenericReserved;
+
+    // Protocol specific information
+
+    union
+    {
+        struct
+        {
+            struct
+            {
+                ULONG Capabilities;
+            } Server;
+            struct
+            {
+                ULONG Capabilities;
+                ULONG ShareFlags; // previoulsly CachingFlags before 21H1
+                UCHAR ShareType; // RS5
+                UCHAR Reserved0[3];
+                ULONG Reserved1;
+            } Share;
+        } Smb2;
+        ULONG Reserved[16];
+    } ProtocolSpecific;
+} FILE_REMOTE_PROTOCOL_INFORMATION, *PFILE_REMOTE_PROTOCOL_INFORMATION;
+
+#define CHECKSUM_ENFORCEMENT_OFF 0x00000001
+
+typedef struct _FILE_INTEGRITY_STREAM_INFORMATION
+{
+    USHORT ChecksumAlgorithm;
+    UCHAR ChecksumChunkShift;
+    UCHAR ClusterShift;
+    ULONG Flags;
+} FILE_INTEGRITY_STREAM_INFORMATION, *PFILE_INTEGRITY_STREAM_INFORMATION;
+
+typedef struct _FILE_VOLUME_NAME_INFORMATION
+{
+    ULONG DeviceNameLength;
+    _Field_size_bytes_(DeviceNameLength) WCHAR DeviceName[1];
+} FILE_VOLUME_NAME_INFORMATION, *PFILE_VOLUME_NAME_INFORMATION;
+
+#ifndef FILE_INVALID_FILE_ID
+#define FILE_INVALID_FILE_ID ((LONGLONG)-1LL)
+#endif // FILE_INVALID_FILE_ID
+
+#define FILE_ID_IS_INVALID(FID) ((FID).QuadPart == FILE_INVALID_FILE_ID)
+
+#define FILE_ID_128_IS_INVALID(FID128) \
+    (((FID128).Identifier[0] == (UCHAR)-1) && \
+    ((FID128).Identifier[1] == (UCHAR)-1) && \
+    ((FID128).Identifier[2] == (UCHAR)-1) && \
+    ((FID128).Identifier[3] == (UCHAR)-1) && \
+    ((FID128).Identifier[4] == (UCHAR)-1) && \
+    ((FID128).Identifier[5] == (UCHAR)-1) && \
+    ((FID128).Identifier[6] == (UCHAR)-1) && \
+    ((FID128).Identifier[7] == (UCHAR)-1) && \
+    ((FID128).Identifier[8] == (UCHAR)-1) && \
+    ((FID128).Identifier[9] == (UCHAR)-1) && \
+    ((FID128).Identifier[10] == (UCHAR)-1) && \
+    ((FID128).Identifier[11] == (UCHAR)-1) && \
+    ((FID128).Identifier[12] == (UCHAR)-1) && \
+    ((FID128).Identifier[13] == (UCHAR)-1) && \
+    ((FID128).Identifier[14] == (UCHAR)-1) && \
+    ((FID128).Identifier[15] == (UCHAR)-1))
+
+#define MAKE_INVALID_FILE_ID_128(FID128) { \
+    ((FID128).Identifier[0] = (UCHAR)-1); \
+    ((FID128).Identifier[1] = (UCHAR)-1); \
+    ((FID128).Identifier[2] = (UCHAR)-1); \
+    ((FID128).Identifier[3] = (UCHAR)-1); \
+    ((FID128).Identifier[4] = (UCHAR)-1); \
+    ((FID128).Identifier[5] = (UCHAR)-1); \
+    ((FID128).Identifier[6] = (UCHAR)-1); \
+    ((FID128).Identifier[7] = (UCHAR)-1); \
+    ((FID128).Identifier[8] = (UCHAR)-1); \
+    ((FID128).Identifier[9] = (UCHAR)-1); \
+    ((FID128).Identifier[10] = (UCHAR)-1); \
+    ((FID128).Identifier[11] = (UCHAR)-1); \
+    ((FID128).Identifier[12] = (UCHAR)-1); \
+    ((FID128).Identifier[13] = (UCHAR)-1); \
+    ((FID128).Identifier[14] = (UCHAR)-1); \
+    ((FID128).Identifier[15] = (UCHAR)-1); \
+}
+
+/**
+ * The FILE_ID_INFORMATION structure is used to query file identification information.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-file_id_information
+ */
+typedef struct _FILE_ID_INFORMATION
+{
+    ULONGLONG VolumeSerialNumber;
+    union
+    {
+        FILE_ID_128 FileId;
+        struct
+        {
+            union
+            {
+                FILE_INTERNAL_INFORMATION FileInternal; // rev
+                LONGLONG FileIdLowPart; // rev
+            };
+            LONGLONG FileIdHighPart; // rev
+        };
+    };
+} FILE_ID_INFORMATION, *PFILE_ID_INFORMATION;
+
+/**
+ * The FILE_ID_EXTD_DIR_INFORMATION structure is used to query 128-bit file reference number information for the files in a directory.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-file_id_extd_dir_information
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_ID_EXTD_DIR_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG FileIndex;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER AllocationSize;
+    ULONG FileAttributes;
+    ULONG FileNameLength;
+    ULONG EaSize;
+    ULONG ReparsePointTag;
+    FILE_ID_128 FileId;
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_ID_EXTD_DIR_INFORMATION, *PFILE_ID_EXTD_DIR_INFORMATION;
+
+#define FileIdExtdDirectoryInformationDefinition {                  \
+    FileIdExtdDirectoryInformation,                                 \
+    FIELD_OFFSET(FILE_ID_EXTD_DIR_INFORMATION, NextEntryOffset),    \
+    FIELD_OFFSET(FILE_ID_EXTD_DIR_INFORMATION, FileName),           \
+    FIELD_OFFSET(FILE_ID_EXTD_DIR_INFORMATION, FileNameLength)      \
+}
+
+/**
+ * The FILE_LINK_ENTRY_FULL_ID_INFORMATION structure contains information about a file link entry.
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_LINK_ENTRY_FULL_ID_INFORMATION
+{
+    ULONG NextEntryOffset;
+    FILE_ID_128 ParentFileId;
+    ULONG FileNameLength;
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_LINK_ENTRY_FULL_ID_INFORMATION, *PFILE_LINK_ENTRY_FULL_ID_INFORMATION;
+
+/**
+ * The FILE_LINKS_FULL_ID_INFORMATION structure contains information about file links.
+ */
+typedef struct _FILE_LINKS_FULL_ID_INFORMATION
+{
+    ULONG BytesNeeded;
+    ULONG EntriesReturned;
+    FILE_LINK_ENTRY_FULL_ID_INFORMATION Entry;
+} FILE_LINKS_FULL_ID_INFORMATION, *PFILE_LINKS_FULL_ID_INFORMATION;
+
+/**
+ * The FILE_ID_EXTD_BOTH_DIR_INFORMATION structure is used to query 128-bit file reference number information for the files in a directory.
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_ID_EXTD_BOTH_DIR_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG FileIndex;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER AllocationSize;
+    ULONG FileAttributes;
+    ULONG FileNameLength;
+    ULONG EaSize;
+    ULONG ReparsePointTag;
+    FILE_ID_128 FileId;
+    CCHAR ShortNameLength;
+    WCHAR ShortName[12];
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_ID_EXTD_BOTH_DIR_INFORMATION, *PFILE_ID_EXTD_BOTH_DIR_INFORMATION;
+
+#define FileIdExtdBothDirectoryInformationDefinition {                  \
+    FileIdExtdBothDirectoryInformation,                                 \
+    FIELD_OFFSET(FILE_ID_EXTD_BOTH_DIR_INFORMATION, NextEntryOffset),   \
+    FIELD_OFFSET(FILE_ID_EXTD_BOTH_DIR_INFORMATION, FileName),          \
+    FIELD_OFFSET(FILE_ID_EXTD_BOTH_DIR_INFORMATION, FileNameLength)     \
+}
+
+/**
+ * The FILE_ID_64_EXTD_DIR_INFORMATION structure is used to query 64-bit file reference number information for the files in a directory.
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_ID_64_EXTD_DIR_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG FileIndex;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER AllocationSize;
+    ULONG FileAttributes;
+    ULONG FileNameLength;
+    ULONG EaSize;
+    ULONG ReparsePointTag;
+    union
+    {
+        LARGE_INTEGER FileId;
+        FILE_INTERNAL_INFORMATION FileInternal; // rev
+    };
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_ID_64_EXTD_DIR_INFORMATION, *PFILE_ID_64_EXTD_DIR_INFORMATION;
+
+#define FileId64ExtdDirectoryInformationDefinition {                    \
+    FileId64ExtdDirectoryInformation,                                   \
+    FIELD_OFFSET(FILE_ID_64_EXTD_DIR_INFORMATION, NextEntryOffset),     \
+    FIELD_OFFSET(FILE_ID_64_EXTD_DIR_INFORMATION, FileName),            \
+    FIELD_OFFSET(FILE_ID_64_EXTD_DIR_INFORMATION, FileNameLength)       \
+}
+
+/**
+ * The FILE_ID_64_EXTD_BOTH_DIR_INFORMATION structure is used to query 64-bit file reference number information for the files in a directory.
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_ID_64_EXTD_BOTH_DIR_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG FileIndex;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER AllocationSize;
+    ULONG FileAttributes;
+    ULONG FileNameLength;
+    ULONG EaSize;
+    ULONG ReparsePointTag;
+    union
+    {
+        LARGE_INTEGER FileId;
+        FILE_INTERNAL_INFORMATION FileInternal; // rev
+    };
+    CCHAR ShortNameLength;
+    WCHAR ShortName[12];
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_ID_64_EXTD_BOTH_DIR_INFORMATION, *PFILE_ID_64_EXTD_BOTH_DIR_INFORMATION;
+
+#define FileId64ExtdBothDirectoryInformationDefinition {                    \
+    FileId64ExtdBothDirectoryInformation,                                   \
+    FIELD_OFFSET(FILE_ID_64_EXTD_BOTH_DIR_INFORMATION, NextEntryOffset),    \
+    FIELD_OFFSET(FILE_ID_64_EXTD_BOTH_DIR_INFORMATION, FileName),           \
+    FIELD_OFFSET(FILE_ID_64_EXTD_BOTH_DIR_INFORMATION, FileNameLength)      \
+}
+
+/**
+ * The FILE_ID_ALL_EXTD_DIR_INFORMATION structure is used to query file reference number information for the files in a directory.
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_ID_ALL_EXTD_DIR_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG FileIndex;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER AllocationSize;
+    ULONG FileAttributes;
+    ULONG FileNameLength;
+    ULONG EaSize;
+    ULONG ReparsePointTag;
+    union
+    {
+        LARGE_INTEGER FileId;
+        FILE_INTERNAL_INFORMATION FileInternal; // rev
+    };
+    FILE_ID_128 FileId128;
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_ID_ALL_EXTD_DIR_INFORMATION, *PFILE_ID_ALL_EXTD_DIR_INFORMATION;
+
+#define FileIdAllExtdDirectoryInformationDefinition {                    \
+    FileIdAllExtdDirectoryInformation,                                   \
+    FIELD_OFFSET(FILE_ID_ALL_EXTD_DIR_INFORMATION, NextEntryOffset),     \
+    FIELD_OFFSET(FILE_ID_ALL_EXTD_DIR_INFORMATION, FileName),            \
+    FIELD_OFFSET(FILE_ID_ALL_EXTD_DIR_INFORMATION, FileNameLength)       \
+}
+
+/**
+ * The FILE_ID_ALL_EXTD_BOTH_DIR_INFORMATION structure is used to query file reference number information for the files in a directory.
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_ID_ALL_EXTD_BOTH_DIR_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG FileIndex;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER AllocationSize;
+    ULONG FileAttributes;
+    ULONG FileNameLength;
+    ULONG EaSize;
+    ULONG ReparsePointTag;
+    union
+    {
+        LARGE_INTEGER FileId;
+        FILE_INTERNAL_INFORMATION FileInternal; // rev
+    };
+    FILE_ID_128 FileId128;
+    CCHAR ShortNameLength;
+    WCHAR ShortName[12];
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_ID_ALL_EXTD_BOTH_DIR_INFORMATION, *PFILE_ID_ALL_EXTD_BOTH_DIR_INFORMATION;
+
+#define FileIdAllExtdBothDirectoryInformationDefinition {                    \
+    FileIdAllExtdBothDirectoryInformation,                                   \
+    FIELD_OFFSET(FILE_ID_ALL_EXTD_BOTH_DIR_INFORMATION, NextEntryOffset),    \
+    FIELD_OFFSET(FILE_ID_ALL_EXTD_BOTH_DIR_INFORMATION, FileName),           \
+    FIELD_OFFSET(FILE_ID_ALL_EXTD_BOTH_DIR_INFORMATION, FileNameLength)      \
+}
+
+#if !defined(NTDDI_WIN11_GE) || (NTDDI_VERSION < NTDDI_WIN11_GE)
+/**
+ * The FILE_STAT_INFORMATION structure is used to query file statistics.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_stat_information
+ */
+typedef struct _FILE_STAT_INFORMATION
+{
+    LARGE_INTEGER FileId;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER AllocationSize;
+    LARGE_INTEGER EndOfFile;
+    ULONG FileAttributes;
+    ULONG ReparseTag;
+    ULONG NumberOfLinks;
+    ACCESS_MASK EffectiveAccess;
+} FILE_STAT_INFORMATION, *PFILE_STAT_INFORMATION;
+
+/**
+ * The FILE_STAT_BASIC_INFORMATION structure is used to query file statistics.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_stat_basic_information
+ */
+typedef struct _FILE_STAT_BASIC_INFORMATION
+{
+    LARGE_INTEGER FileId;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER AllocationSize;
+    LARGE_INTEGER EndOfFile;
+    ULONG FileAttributes;
+    ULONG ReparseTag;
+    ULONG NumberOfLinks;
+    ULONG DeviceType;
+    ULONG DeviceCharacteristics;
+    ULONG Reserved;
+    LARGE_INTEGER VolumeSerialNumber;
+    FILE_ID_128 FileId128;
+} FILE_STAT_BASIC_INFORMATION, *PFILE_STAT_BASIC_INFORMATION;
+#endif // NTDDI_WIN11_GE
+
+/**
+ * The FILE_MEMORY_PARTITION_INFORMATION structure is used to query information about a memory partition.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_memory_partition_information
+ */
+typedef struct _FILE_MEMORY_PARTITION_INFORMATION
+{
+    HANDLE OwnerPartitionHandle;
+    union
+    {
+        struct
+        {
+            UCHAR NoCrossPartitionAccess;
+            UCHAR Spare[3];
+        };
+        ULONG AllFlags;
+    } Flags;
+} FILE_MEMORY_PARTITION_INFORMATION, *PFILE_MEMORY_PARTITION_INFORMATION;
+
+// LxFlags
+#define LX_FILE_METADATA_HAS_UID 0x1
+#define LX_FILE_METADATA_HAS_GID 0x2
+#define LX_FILE_METADATA_HAS_MODE 0x4
+#define LX_FILE_METADATA_HAS_DEVICE_ID 0x8
+#define LX_FILE_CASE_SENSITIVE_DIR 0x10
+
+#if !defined(NTDDI_WIN11_GE) || (NTDDI_VERSION < NTDDI_WIN11_GE)
+/**
+ * The FILE_STAT_LX_INFORMATION structure is used to query file statistics for Linux compatibility.
+ */
+typedef struct _FILE_STAT_LX_INFORMATION
+{
+    FILE_INTERNAL_INFORMATION FileId;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER AllocationSize;
+    LARGE_INTEGER EndOfFile;
+    ULONG FileAttributes;
+    ULONG ReparseTag;
+    ULONG NumberOfLinks;
+    ACCESS_MASK EffectiveAccess;
+    ULONG LxFlags;
+    ULONG LxUid;
+    ULONG LxGid;
+    ULONG LxMode;
+    ULONG LxDeviceIdMajor;
+    ULONG LxDeviceIdMinor;
+} FILE_STAT_LX_INFORMATION, *PFILE_STAT_LX_INFORMATION;
+#endif // NTDDI_WIN11_GE
+
+typedef struct _FILE_STORAGE_RESERVE_ID_INFORMATION
+{
+    STORAGE_RESERVE_ID StorageReserveId;
+} FILE_STORAGE_RESERVE_ID_INFORMATION, *PFILE_STORAGE_RESERVE_ID_INFORMATION;
+
+#define FILE_CS_FLAG_CASE_SENSITIVE_DIR     0x00000001
+
+#if !defined(NTDDI_WIN11_GE) || (NTDDI_VERSION < NTDDI_WIN11_GE)
+typedef struct _FILE_CASE_SENSITIVE_INFORMATION
+{
+    ULONG Flags;
+} FILE_CASE_SENSITIVE_INFORMATION, *PFILE_CASE_SENSITIVE_INFORMATION;
+#endif // NTDDI_WIN11_GE
+
+typedef enum _FILE_KNOWN_FOLDER_TYPE
+{
+    KnownFolderNone = 0,
+    KnownFolderDesktop,
+    KnownFolderDocuments,
+    KnownFolderDownloads,
+    KnownFolderMusic,
+    KnownFolderPictures,
+    KnownFolderVideos,
+    KnownFolderOther,
+    KnownFolderMax
+} FILE_KNOWN_FOLDER_TYPE;
+
+typedef struct _FILE_KNOWN_FOLDER_INFORMATION
+{
+    FILE_KNOWN_FOLDER_TYPE Type;
+} FILE_KNOWN_FOLDER_INFORMATION, *PFILE_KNOWN_FOLDER_INFORMATION;
+
+// private
+typedef struct _FILE_STREAM_RESERVATION_INFORMATION
+{
+    ULONG_PTR TrackedReservation;
+    ULONG_PTR EnforcedReservation;
+} FILE_STREAM_RESERVATION_INFORMATION, *PFILE_STREAM_RESERVATION_INFORMATION;
+
+// private
+typedef struct _MUP_PROVIDER_INFORMATION
+{
+    ULONG Level;
+    PVOID Buffer;
+    PULONG BufferSize;
+} MUP_PROVIDER_INFORMATION, *PMUP_PROVIDER_INFORMATION;
+
+//
+// NtQueryDirectoryFile types
+//
+
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_INFORMATION_DEFINITION
+{
+    FILE_INFORMATION_CLASS Class;
+    ULONG NextEntryOffset;
+    ULONG FileNameOffset;
+    ULONG FileNameLengthOffset;
+} FILE_INFORMATION_DEFINITION, *PFILE_INFORMATION_DEFINITION;
+
+/**
+ * The FILE_DIRECTORY_INFORMATION structure is used to query detailed information for the files in a directory.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_directory_information
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_DIRECTORY_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG FileIndex;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER AllocationSize;
+    ULONG FileAttributes;
+    ULONG FileNameLength;
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_DIRECTORY_INFORMATION, *PFILE_DIRECTORY_INFORMATION;
+
+#define FileDirectoryInformationDefinition {                    \
+    FileDirectoryInformation,                                   \
+    FIELD_OFFSET(FILE_DIRECTORY_INFORMATION, NextEntryOffset),  \
+    FIELD_OFFSET(FILE_DIRECTORY_INFORMATION, FileName),         \
+    FIELD_OFFSET(FILE_DIRECTORY_INFORMATION, FileNameLength)    \
+}
+
+/**
+ * The FILE_FULL_DIR_INFORMATION structure is used to query detailed information for the files in a directory.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_full_dir_information
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_FULL_DIR_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG FileIndex;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER AllocationSize;
+    ULONG FileAttributes;
+    ULONG FileNameLength;
+    ULONG EaSize;
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_FULL_DIR_INFORMATION, *PFILE_FULL_DIR_INFORMATION;
+
+#define FileFullDirectoryInformationDefinition {                \
+    FileFullDirectoryInformation,                               \
+    FIELD_OFFSET(FILE_FULL_DIR_INFORMATION, NextEntryOffset),   \
+    FIELD_OFFSET(FILE_FULL_DIR_INFORMATION, FileName),          \
+    FIELD_OFFSET(FILE_FULL_DIR_INFORMATION, FileNameLength)     \
+}
+
+/**
+ * The FILE_ID_FULL_DIR_INFORMATION structure is used to query detailed information for the files in a directory.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_id_full_dir_information
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_ID_FULL_DIR_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG FileIndex;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER AllocationSize;
+    ULONG FileAttributes;
+    ULONG FileNameLength;
+    ULONG EaSize;
+    union
+    {
+        LARGE_INTEGER FileId;
+        FILE_INTERNAL_INFORMATION FileInternal; // rev
+    };
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_ID_FULL_DIR_INFORMATION, *PFILE_ID_FULL_DIR_INFORMATION;
+
+#define FileIdFullDirectoryInformationDefinition {              \
+    FileIdFullDirectoryInformation,                             \
+    FIELD_OFFSET(FILE_ID_FULL_DIR_INFORMATION, NextEntryOffset),\
+    FIELD_OFFSET(FILE_ID_FULL_DIR_INFORMATION, FileName),       \
+    FIELD_OFFSET(FILE_ID_FULL_DIR_INFORMATION, FileNameLength)  \
+}
+
+/**
+ * The FILE_BOTH_DIR_INFORMATION structure is used to query detailed information for the files in a directory.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_both_dir_information
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_BOTH_DIR_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG FileIndex;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER AllocationSize;
+    ULONG FileAttributes;
+    ULONG FileNameLength;
+    ULONG EaSize;
+    CCHAR ShortNameLength;
+    WCHAR ShortName[12];
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_BOTH_DIR_INFORMATION, *PFILE_BOTH_DIR_INFORMATION;
+
+#define FileBothDirectoryInformationDefinition {                \
+    FileBothDirectoryInformation,                               \
+    FIELD_OFFSET(FILE_BOTH_DIR_INFORMATION, NextEntryOffset),   \
+    FIELD_OFFSET(FILE_BOTH_DIR_INFORMATION, FileName),          \
+    FIELD_OFFSET(FILE_BOTH_DIR_INFORMATION, FileNameLength)     \
+}
+
+/**
+ * The FILE_ID_BOTH_DIR_INFORMATION structure is used to query detailed information for the files in a directory.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_id_both_dir_information
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_ID_BOTH_DIR_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG FileIndex;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER AllocationSize;
+    ULONG FileAttributes;
+    ULONG FileNameLength;
+    ULONG EaSize;
+    CCHAR ShortNameLength;
+    WCHAR ShortName[12];
+    union
+    {
+        LARGE_INTEGER FileId;
+        FILE_INTERNAL_INFORMATION FileInternal; // rev
+    };
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_ID_BOTH_DIR_INFORMATION, *PFILE_ID_BOTH_DIR_INFORMATION;
+
+#define FileIdBothDirectoryInformationDefinition {              \
+    FileIdBothDirectoryInformation,                             \
+    FIELD_OFFSET(FILE_ID_BOTH_DIR_INFORMATION, NextEntryOffset),\
+    FIELD_OFFSET(FILE_ID_BOTH_DIR_INFORMATION, FileName),       \
+    FIELD_OFFSET(FILE_ID_BOTH_DIR_INFORMATION, FileNameLength)  \
+}
+
+/**
+ * The FILE_NAMES_INFORMATION structure is used to query for the names of files in a directory.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_names_information
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_NAMES_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG FileIndex;
+    ULONG FileNameLength;
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_NAMES_INFORMATION, *PFILE_NAMES_INFORMATION;
+
+#define FileNamesInformationDefinition {                    \
+    FileNamesInformation,                                   \
+    FIELD_OFFSET(FILE_NAMES_INFORMATION, NextEntryOffset),  \
+    FIELD_OFFSET(FILE_NAMES_INFORMATION, FileName),         \
+    FIELD_OFFSET(FILE_NAMES_INFORMATION, FileNameLength)    \
+}
+
+/**
+ * The FILE_ID_GLOBAL_TX_DIR_INFORMATION structure contains information about the files in a directory for a transactional NTFS (TxNTFS) operation.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_id_global_tx_dir_information
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_ID_GLOBAL_TX_DIR_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG FileIndex;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER LastWriteTime;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER EndOfFile;
+    LARGE_INTEGER AllocationSize;
+    ULONG FileAttributes;
+    ULONG FileNameLength;
+    union
+    {
+        LARGE_INTEGER FileId;
+        FILE_INTERNAL_INFORMATION FileInternal; // rev
+    };
+    GUID LockingTransactionId;
+    ULONG TxInfoFlags;
+    _Field_size_bytes_(FileNameLength) WCHAR FileName[1];
+} FILE_ID_GLOBAL_TX_DIR_INFORMATION, *PFILE_ID_GLOBAL_TX_DIR_INFORMATION;
+
+#define FILE_ID_GLOBAL_TX_DIR_INFO_FLAG_WRITELOCKED 0x00000001
+#define FILE_ID_GLOBAL_TX_DIR_INFO_FLAG_VISIBLE_TO_TX 0x00000002
+#define FILE_ID_GLOBAL_TX_DIR_INFO_FLAG_VISIBLE_OUTSIDE_TX 0x00000004
+
+#define FileIdGlobalTxDirectoryInformationDefinition {                  \
+    FileIdGlobalTxDirectoryInformation,                                 \
+    FIELD_OFFSET(FILE_ID_GLOBAL_TX_DIR_INFORMATION, NextEntryOffset),   \
+    FIELD_OFFSET(FILE_ID_GLOBAL_TX_DIR_INFORMATION, FileName),          \
+    FIELD_OFFSET(FILE_ID_GLOBAL_TX_DIR_INFORMATION, FileNameLength)     \
+}
+
+typedef struct _FILE_OBJECTID_INFORMATION
+{
+    union
+    {
+        ULARGE_INTEGER FileReference;
+        struct
+        {
+            ULONGLONG MftRecordIndex : 48; // rev
+            ULONGLONG SequenceNumber : 16; // rev
+        };
+    };
+    UCHAR ObjectId[16]; // GUID
+    union
+    {
+        struct
+        {
+            UCHAR BirthVolumeId[16];
+            UCHAR BirthObjectId[16];
+            UCHAR DomainId[16];
+        };
+        UCHAR ExtendedInfo[48];
+    };
+} FILE_OBJECTID_INFORMATION, *PFILE_OBJECTID_INFORMATION;
+
+typedef struct _FILE_DIRECTORY_NEXT_INFORMATION
+{
+    ULONG NextEntryOffset;
+} FILE_DIRECTORY_NEXT_INFORMATION, *PFILE_DIRECTORY_NEXT_INFORMATION;
+
+//
+// NtQueryEaFile/NtSetEaFile types
+//
+
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_FULL_EA_INFORMATION
+{
+    ULONG NextEntryOffset;
+    UCHAR Flags;
+    UCHAR EaNameLength;
+    USHORT EaValueLength;
+    _Field_size_bytes_(EaNameLength) CHAR EaName[1];
+    // ...
+    // UCHAR EaValue[1]
+} FILE_FULL_EA_INFORMATION, *PFILE_FULL_EA_INFORMATION;
+
+/**
+ * The FILE_GET_EA_INFORMATION structure is used to query for extended-attribute (EA) information.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_get_ea_information
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_GET_EA_INFORMATION
+{
+    ULONG NextEntryOffset;
+    UCHAR EaNameLength;
+    _Field_size_bytes_(EaNameLength) CHAR EaName[1];
+} FILE_GET_EA_INFORMATION, *PFILE_GET_EA_INFORMATION;
+
+//
+// NtQueryQuotaInformationFile/NtSetQuotaInformationFile types
+//
+
+/**
+ * The FILE_GET_QUOTA_INFORMATION structure is used to query for quota information.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_get_quota_information
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_GET_QUOTA_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG SidLength;
+    _Field_size_bytes_(SidLength) SID Sid;
+} FILE_GET_QUOTA_INFORMATION, *PFILE_GET_QUOTA_INFORMATION;
+
+/**
+ * The FILE_QUOTA_INFORMATION structure contains per-user quota information for each of the files in a directory.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_quota_information
+ */
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_QUOTA_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG SidLength;
+    LARGE_INTEGER ChangeTime;
+    LARGE_INTEGER QuotaUsed;
+    LARGE_INTEGER QuotaThreshold;
+    LARGE_INTEGER QuotaLimit;
+    _Field_size_bytes_(SidLength) SID Sid;
+} FILE_QUOTA_INFORMATION, *PFILE_QUOTA_INFORMATION;
+
+/**
+ * The FS_INFORMATION_CLASS enumeration type is used to specify the type of volume information to be queried or set.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_fsinfoclass
+ */
+typedef enum _FSINFOCLASS
+{
+    FileFsVolumeInformation = 1,            // q: FILE_FS_VOLUME_INFORMATION
+    FileFsLabelInformation,                 // s: FILE_FS_LABEL_INFORMATION // SeManageVolumePrivilege
+    FileFsSizeInformation,                  // q: FILE_FS_SIZE_INFORMATION
+    FileFsDeviceInformation,                // q: FILE_FS_DEVICE_INFORMATION
+    FileFsAttributeInformation,             // q: FILE_FS_ATTRIBUTE_INFORMATION
+    FileFsControlInformation,               // qs: FILE_FS_CONTROL_INFORMATION // SeManageVolumePrivilege
+    FileFsFullSizeInformation,              // q: FILE_FS_FULL_SIZE_INFORMATION
+    FileFsObjectIdInformation,              // qs: FILE_FS_OBJECTID_INFORMATION // SeRestorePrivilege
+    FileFsDriverPathInformation,            // q: FILE_FS_DRIVER_PATH_INFORMATION
+    FileFsVolumeFlagsInformation,           // qs: FILE_FS_VOLUME_FLAGS_INFORMATION // SeManageVolumePrivilege // 10
+    FileFsSectorSizeInformation,            // q: FILE_FS_SECTOR_SIZE_INFORMATION // since WIN8
+    FileFsDataCopyInformation,              // q: FILE_FS_DATA_COPY_INFORMATION
+    FileFsMetadataSizeInformation,          // q: FILE_FS_METADATA_SIZE_INFORMATION // since THRESHOLD
+    FileFsFullSizeInformationEx,            // q: FILE_FS_FULL_SIZE_INFORMATION_EX // since REDSTONE5
+    FileFsGuidInformation,                  // q: FILE_FS_GUID_INFORMATION // since 23H2
+    FileFsMaximumInformation
+} FSINFOCLASS, *PFSINFOCLASS;
+typedef enum _FSINFOCLASS FS_INFORMATION_CLASS;
+
+//
+// NtQueryVolumeInformation/NtSetVolumeInformation types
+//
+
+/**
+ * The FILE_FS_VOLUME_INFORMATION structure is used to query information about a volume where a file resides.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_volume_information
+ */
+typedef struct _FILE_FS_VOLUME_INFORMATION
+{
+    LARGE_INTEGER VolumeCreationTime;
+    ULONG VolumeSerialNumber;
+    ULONG VolumeLabelLength;
+    BOOLEAN SupportsObjects;
+    _Field_size_bytes_(VolumeLabelLength) WCHAR VolumeLabel[1];
+} FILE_FS_VOLUME_INFORMATION, *PFILE_FS_VOLUME_INFORMATION;
+
+/**
+ * The FILE_FS_LABEL_INFORMATION structure is used to set the label for a file system volume.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_label_information
+ */
+typedef struct _FILE_FS_LABEL_INFORMATION
+{
+    ULONG VolumeLabelLength;
+    _Field_size_bytes_(VolumeLabelLength) WCHAR VolumeLabel[1];
+} FILE_FS_LABEL_INFORMATION, *PFILE_FS_LABEL_INFORMATION;
+
+/**
+ * The FILE_FS_SIZE_INFORMATION structure is used to query sector size information for a file system volume.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_size_information
+ */
+typedef struct _FILE_FS_SIZE_INFORMATION
+{
+    LARGE_INTEGER TotalAllocationUnits;
+    LARGE_INTEGER AvailableAllocationUnits;
+    ULONG SectorsPerAllocationUnit;
+    ULONG BytesPerSector;
+} FILE_FS_SIZE_INFORMATION, *PFILE_FS_SIZE_INFORMATION;
+
+// FileSystemControlFlags
+#define FILE_VC_QUOTA_NONE 0x00000000
+#define FILE_VC_QUOTA_TRACK 0x00000001
+#define FILE_VC_QUOTA_ENFORCE 0x00000002
+#define FILE_VC_QUOTA_MASK 0x00000003
+#define FILE_VC_CONTENT_INDEX_DISABLED 0x00000008
+#define FILE_VC_LOG_QUOTA_THRESHOLD 0x00000010
+#define FILE_VC_LOG_QUOTA_LIMIT 0x00000020
+#define FILE_VC_LOG_VOLUME_THRESHOLD 0x00000040
+#define FILE_VC_LOG_VOLUME_LIMIT 0x00000080
+#define FILE_VC_QUOTAS_INCOMPLETE 0x00000100
+#define FILE_VC_QUOTAS_REBUILDING 0x00000200
+#define FILE_VC_VALID_MASK 0x000003ff
+
+/**
+ * The FILE_FS_CONTROL_INFORMATION structure is used to query or set information about a file system volume.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_control_information
+ */
+typedef struct _FILE_FS_CONTROL_INFORMATION
+{
+    LARGE_INTEGER FreeSpaceStartFiltering;
+    LARGE_INTEGER FreeSpaceThreshold;
+    LARGE_INTEGER FreeSpaceStopFiltering;
+    LARGE_INTEGER DefaultQuotaThreshold;
+    LARGE_INTEGER DefaultQuotaLimit;
+    ULONG FileSystemControlFlags; // FILE_VC_*
+} FILE_FS_CONTROL_INFORMATION, *PFILE_FS_CONTROL_INFORMATION;
+
+/**
+ * The FILE_FS_FULL_SIZE_INFORMATION structure is used to query sector size information for a file system volume.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_full_size_information
+ */
+typedef struct _FILE_FS_FULL_SIZE_INFORMATION
+{
+    LARGE_INTEGER TotalAllocationUnits;
+    LARGE_INTEGER CallerAvailableAllocationUnits;
+    LARGE_INTEGER ActualAvailableAllocationUnits;
+    ULONG SectorsPerAllocationUnit;
+    ULONG BytesPerSector;
+} FILE_FS_FULL_SIZE_INFORMATION, *PFILE_FS_FULL_SIZE_INFORMATION;
+
+/**
+ * The FILE_FS_OBJECTID_INFORMATION structure is used to query or set the object ID for a file system volume.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_objectid_information
+ */
+typedef struct _FILE_FS_OBJECTID_INFORMATION
+{
+    UCHAR ObjectId[16];
+    union
+    {
+        struct
+        {
+            UCHAR BirthVolumeId[16];
+            UCHAR BirthObjectId[16];
+            UCHAR DomainId[16];
+        };
+        UCHAR ExtendedInfo[48];
+    };
+} FILE_FS_OBJECTID_INFORMATION, *PFILE_FS_OBJECTID_INFORMATION;
+
+/**
+ * The FILE_FS_DEVICE_INFORMATION structure provides file system device information about the type of device object associated with a file object.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ns-wdm-_file_fs_device_information
+ */
+typedef struct _FILE_FS_DEVICE_INFORMATION
+{
+    DEVICE_TYPE DeviceType;
+    ULONG Characteristics;
+} FILE_FS_DEVICE_INFORMATION, *PFILE_FS_DEVICE_INFORMATION;
+
+/**
+ * The FILE_FS_ATTRIBUTE_INFORMATION structure is used to query attribute information for a file system.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_attribute_information
+ */
+typedef struct _FILE_FS_ATTRIBUTE_INFORMATION
+{
+    ULONG FileSystemAttributes;
+    LONG MaximumComponentNameLength;
+    ULONG FileSystemNameLength;
+    _Field_size_bytes_(FileSystemNameLength) WCHAR FileSystemName[1];
+} FILE_FS_ATTRIBUTE_INFORMATION, *PFILE_FS_ATTRIBUTE_INFORMATION;
+
+/**
+ * The FILE_FS_DRIVER_PATH_INFORMATION structure is used to query whether a given driver is in the I/O path for a file system volume.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_driver_path_information
+ */
+typedef struct _FILE_FS_DRIVER_PATH_INFORMATION
+{
+    BOOLEAN DriverInPath;
+    ULONG DriverNameLength;
+    _Field_size_bytes_(DriverNameLength) WCHAR DriverName[1];
+} FILE_FS_DRIVER_PATH_INFORMATION, *PFILE_FS_DRIVER_PATH_INFORMATION;
+
+/**
+ * The FILE_FS_VOLUME_FLAGS_INFORMATION structure is used to query or set file system volume flags.
+ */
+typedef struct _FILE_FS_VOLUME_FLAGS_INFORMATION
+{
+    ULONG Flags;
+} FILE_FS_VOLUME_FLAGS_INFORMATION, *PFILE_FS_VOLUME_FLAGS_INFORMATION;
+
+#define SSINFO_FLAGS_ALIGNED_DEVICE 0x00000001
+#define SSINFO_FLAGS_PARTITION_ALIGNED_ON_DEVICE 0x00000002
+#define SSINFO_FLAGS_NO_SEEK_PENALTY 0x00000004
+#define SSINFO_FLAGS_TRIM_ENABLED 0x00000008
+#define SSINFO_FLAGS_BYTE_ADDRESSABLE 0x00000010 // since REDSTONE
+
+// If set for Sector and Partition fields, alignment is not known.
+#define SSINFO_OFFSET_UNKNOWN 0xffffffff
+
+/**
+ * The FILE_FS_SECTOR_SIZE_INFORMATION structure is used to query sector size information for a file system volume.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/ns-ntddk-_file_fs_sector_size_information
+ */
+typedef struct _FILE_FS_SECTOR_SIZE_INFORMATION
+{
+    ULONG LogicalBytesPerSector;
+    ULONG PhysicalBytesPerSectorForAtomicity;
+    ULONG PhysicalBytesPerSectorForPerformance;
+    ULONG FileSystemEffectivePhysicalBytesPerSectorForAtomicity;
+    ULONG Flags; // SSINFO_FLAGS_*
+    ULONG ByteOffsetForSectorAlignment;
+    ULONG ByteOffsetForPartitionAlignment;
+} FILE_FS_SECTOR_SIZE_INFORMATION, *PFILE_FS_SECTOR_SIZE_INFORMATION;
+
+/**
+ * The FILE_FS_DATA_COPY_INFORMATION structure is used to query the number of copies of data for a file system volume.
+ */
+typedef struct _FILE_FS_DATA_COPY_INFORMATION
+{
+    ULONG NumberOfCopies;
+} FILE_FS_DATA_COPY_INFORMATION, *PFILE_FS_DATA_COPY_INFORMATION;
+
+/**
+ * The FILE_FS_METADATA_SIZE_INFORMATION structure is used to query the size of metadata for a file system volume.
+ */
+typedef struct _FILE_FS_METADATA_SIZE_INFORMATION
+{
+    LARGE_INTEGER TotalMetadataAllocationUnits;
+    ULONG SectorsPerAllocationUnit;
+    ULONG BytesPerSector;
+} FILE_FS_METADATA_SIZE_INFORMATION, *PFILE_FS_METADATA_SIZE_INFORMATION;
+
+/**
+ * The FILE_FS_FULL_SIZE_INFORMATION_EX structure is used to query sector size information for a file system volume.
+ */
+typedef struct _FILE_FS_FULL_SIZE_INFORMATION_EX
+{
+    ULONGLONG ActualTotalAllocationUnits;
+    ULONGLONG ActualAvailableAllocationUnits;
+    ULONGLONG ActualPoolUnavailableAllocationUnits;
+    ULONGLONG CallerTotalAllocationUnits;
+    ULONGLONG CallerAvailableAllocationUnits;
+    ULONGLONG CallerPoolUnavailableAllocationUnits;
+    ULONGLONG UsedAllocationUnits;
+    ULONGLONG TotalReservedAllocationUnits;
+    ULONGLONG VolumeStorageReserveAllocationUnits;
+    ULONGLONG AvailableCommittedAllocationUnits;
+    ULONGLONG PoolAvailableAllocationUnits;
+    ULONG SectorsPerAllocationUnit;
+    ULONG BytesPerSector;
+} FILE_FS_FULL_SIZE_INFORMATION_EX, *PFILE_FS_FULL_SIZE_INFORMATION_EX;
+
+/**
+ * The FILE_FS_GUID_INFORMATION structure is used to query the GUID for a file system volume.
+ */
+typedef struct _FILE_FS_GUID_INFORMATION
+{
+    GUID FsGuid;
+} FILE_FS_GUID_INFORMATION, *PFILE_FS_GUID_INFORMATION;
+
+//
+// System calls
+//
+
+/**
+ * The NtCreateFile routine creates a new file or directory, or opens an existing file, device, directory, or volume.
+ *
+ * \param[out] FileHandle Pointer to a variable that receives a handle to the file.
+ * \param[in] DesiredAccess The requested access to the object.
+ * \param[in] ObjectAttributes Pointer to an OBJECT_ATTRIBUTES structure that contains the file's attributes, including file name.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure that receives the final completion status and information about the operation.
+ * \param[in, optional] AllocationSize Initial allocation size in bytes for the file.
+ * \param[in] FileAttributes Specifies one or more FILE_ATTRIBUTE_XXX flags.
+ * \param[in] ShareAccess Specifies the type of share access for the file.
+ * \param[in] CreateDisposition Specifies how the file should be handled when the file already exists.
+ * \param[in] CreateOptions Specifies the options to be applied when creating or opening the file.
+ * \param[in, optional] EaBuffer Pointer to a caller-allocated input buffer containing extended attributes.
+ * \param[in] EaLength Length of the EaBuffer.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/Winternl/nf-winternl-ntcreatefile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCreateFile(
+    _Out_ PHANDLE FileHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_ PCOBJECT_ATTRIBUTES ObjectAttributes,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_opt_ PLARGE_INTEGER AllocationSize,
+    _In_ ULONG FileAttributes,
+    _In_ ULONG ShareAccess,
+    _In_ ULONG CreateDisposition,
+    _In_ ULONG CreateOptions,
+    _In_reads_bytes_opt_(EaLength) PVOID EaBuffer,
+    _In_ ULONG EaLength
+    );
+
+/**
+ * The NtCreateNamedPipeFile routine creates or opens a named pipe.
+ *
+ * \param[out] FileHandle Pointer to a variable that receives a handle to the pipe.
+ * \param[in] DesiredAccess The requested access to the object.
+ * \param[in] ObjectAttributes Pointer to an OBJECT_ATTRIBUTES structure that contains the object attributes, including pipe name.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure that receives the final completion status and information about the operation.
+ * \param[in] ShareAccess Specifies the type of share access for the file.
+ * \param[in] CreateDisposition Specifies how the file should be handled when the file already exists.
+ * \param[in] CreateOptions Specifies the options to be applied when creating or opening the file.
+ * \param[in] NamedPipeType Type of named pipe to create (byte-type or message-type).
+ * \param[in] ReadMode Mode in which to read the pipe (byte-type or message-type).
+ * \param[in] CompletionMode Specifies blocking or non-blocking mode of the pipe.
+ * \param[in] MaximumInstances Maximum number of simultaneous instances of the named pipe.
+ * \param[in] InboundQuota Specifies the pool quota that is reserved for writes to the inbound side of the named pipe.
+ * \param[in] OutboundQuota Specifies the pool quota that is reserved for writes to the inbound side of the named pipe.
+ * \param[in] DefaultTimeout An optional pointer to a timeout value that is used if a timeout value is not specified when waiting for an instance of a named pipe.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/devnotes/nt-create-named-pipe-file
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCreateNamedPipeFile(
+    _Out_ PHANDLE FileHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_ PCOBJECT_ATTRIBUTES ObjectAttributes,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ ULONG ShareAccess,
+    _In_ ULONG CreateDisposition,
+    _In_ ULONG CreateOptions,
+    _In_ ULONG NamedPipeType,
+    _In_ ULONG ReadMode,
+    _In_ ULONG CompletionMode,
+    _In_ ULONG MaximumInstances,
+    _In_ ULONG InboundQuota,
+    _In_ ULONG OutboundQuota,
+    _In_ PLARGE_INTEGER DefaultTimeout
+    );
+
+/**
+ * The NtCreateMailslotFile routine creates a mailslot.
+ *
+ * \param[out] FileHandle Pointer to a variable that receives a handle to the mailslot.
+ * \param[in] DesiredAccess The requested access to the mailslot.
+ * \param[in] ObjectAttributes Pointer to an OBJECT_ATTRIBUTES structure.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure.
+ * \param[in] CreateOptions Specifies the options to be applied when creating the mailslot.
+ * \param[in] MailslotQuota Specifies the amount of memory that the mailslot can use for its messages.
+ * \param[in] MaximumMessageSize Specifies the maximum size of a message that can be written to the mailslot.
+ * \param[in] ReadTimeout Specifies the maximum time a read operation can wait for a message to be written to the mailslot.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createmailslotw
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCreateMailslotFile(
+    _Out_ PHANDLE FileHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_ PCOBJECT_ATTRIBUTES ObjectAttributes,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ ULONG CreateOptions,
+    _In_ ULONG MailslotQuota,
+    _In_ ULONG MaximumMessageSize,
+    _In_ PLARGE_INTEGER ReadTimeout
+    );
+
+/**
+ * The NtOpenFile routine opens an existing file, device, directory, or volume, and returns a handle for the file object.
+ *
+ * \param[out] FileHandle Pointer to a variable that receives a handle to the file.
+ * \param[in] DesiredAccess The requested access to the object.
+ * \param[in] ObjectAttributes Pointer to an OBJECT_ATTRIBUTES structure that contains the file's attributes, including file name.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure that receives the final completion status and information about the operation.
+ * \param[in] ShareAccess Specifies the type of share access for the file.
+ * \param[in] OpenOptions Specifies the options to apply when opening the file.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntopenfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtOpenFile(
+    _Out_ PHANDLE FileHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_ PCOBJECT_ATTRIBUTES ObjectAttributes,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ ULONG ShareAccess,
+    _In_ ULONG OpenOptions
+    );
+
+/**
+ * The NtDeleteFile routine deletes the specified file.
+ *
+ * \param[in] ObjectAttributes Pointer to an OBJECT_ATTRIBUTES structure that contains the file's attributes, including file name.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwdeletefile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtDeleteFile(
+    _In_ PCOBJECT_ATTRIBUTES ObjectAttributes
+    );
+
+/**
+ * The NtFlushBuffersFile routine sends a flush request for the specified file to the file system.
+ *
+ * \param[in] FileHandle A handle to the file whose buffers will be flushed.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure that receives the final completion status and information about the operation.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwflushbuffersfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtFlushBuffersFile(
+    _In_ HANDLE FileHandle,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock
+    );
+
+//  Flag definitions for NtFlushBuffersFileEx
+//
+//  If none of the below flags are specified the following will occur for a
+//  given file handle:
+//      - Write any modified data for the given file from the Windows in-memory
+//        cache.
+//      - Commit all pending metadata changes for the given file from the
+//        Windows in-memory cache.
+//      - Send a SYNC command to the underlying storage device to commit all
+//        written data in the devices cache to persistent storage.
+//
+//  If a volume handle is specified:
+//      - Write all modified data for all files on the volume from the Windows
+//        in-memory cache.
+//      - Commit all pending metadata changes for all files on the volume from
+//        the Windows in-memory cache.
+//      - Send a SYNC command to the underlying storage device to commit all
+//        written data in the devices cache to persistent storage.
+//
+//  This is equivalent to how NtFlushBuffersFile has always worked.
+
+
+// If set, File data and metadata in the file cache will be written, and the
+// underlying storage is synchronized to flush its cache.
+// Windows file systems supported: NTFS, ReFS, FAT, exFAT.
+//
+#define FLUSH_FLAGS_FILE_NORMAL 0x00000000
+//  If set, this operation will write the data for the given file from the
+//  Windows in-memory cache.  This will NOT commit any associated metadata
+//  changes.  This will NOT send a SYNC to the storage device to flush its
+//  cache.  Not supported on volume handles.
+//
+#define FLUSH_FLAGS_FILE_DATA_ONLY 0x00000001
+//
+//  If set, this operation will commit both the data and metadata changes for
+//  the given file from the Windows in-memory cache.  This will NOT send a SYNC
+//  to the storage device to flush its cache.  Not supported on volume handles.
+//
+#define FLUSH_FLAGS_NO_SYNC 0x00000002
+//
+//  If set, this operation will write the data for the given file from the
+//  Windows in-memory cache.  It will also try to skip updating the timestamp
+//  as much as possible.  This will send a SYNC to the storage device to flush its
+//  cache.  Not supported on volume or directory handles.
+//
+#define FLUSH_FLAGS_FILE_DATA_SYNC_ONLY 0x00000004 // REDSTONE1
+//
+//  If set, this operation will write the data for the given file from the
+//  Windows in-memory cache.  It will also try to skip updating the timestamp
+//  as much as possible.  This will send a SYNC to the storage device to flush its
+//  cache.  Not supported on volume or directory handles.
+//
+#define FLUSH_FLAGS_FLUSH_AND_PURGE 0x00000008 // 24H2
+
+#if (PHNT_VERSION >= PHNT_WINDOWS_8)
+
+/**
+ * The NtFlushBuffersFileEx routine sends a flush request for a given file to the file system. An optional flush operation flag can be set to control how file data is written to storage.
+ *
+ * \param FileHandle A handle to the file object representing the file, directory, device or volume.
+ * \param Flags Flush operation flags.
+ * \param Parameters Pointer to a block with additional parameters. This parameter must currently be set to NULL.
+ * \param ParametersSize The size, in bytes, of the block that Parameters point to. This parameter must currently be set to 0.
+ * \param IoStatusBlock Address of the caller's I/O status block. This parameter is required and cannot be NULL.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntflushbuffersfileex
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtFlushBuffersFileEx(
+    _In_ HANDLE FileHandle,
+    _In_ ULONG Flags,
+    _In_reads_bytes_(ParametersSize) PVOID Parameters,
+    _In_ ULONG ParametersSize,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock
+    );
+#endif // PHNT_VERSION >= PHNT_WINDOWS_8
+
+/**
+ * The NtQueryInformationFile routine returns various kinds of information about a file object.
+ *
+ * \param FileHandle A handle to the file object representing the file or directory.
+ * \param IoStatusBlock A pointer to an IO_STATUS_BLOCK structure that receives the final completion status, and the number of bytes written to the buffer pointed to by FileInformation.
+ * \param FileInformation Pointer to a caller-allocated buffer into which the routine writes the requested information about the file object.
+ * \param Length The size, in bytes, of the buffer pointed to by FileInformation.
+ * \param FileInformationClass Specifies the type of information to be returned about the file, in the buffer that FileInformation points to.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntqueryinformationfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtQueryInformationFile(
+    _In_ HANDLE FileHandle,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _Out_writes_bytes_(Length) PVOID FileInformation,
+    _In_ ULONG Length,
+    _In_ FILE_INFORMATION_CLASS FileInformationClass
+    );
+
+#if (PHNT_VERSION >= PHNT_WINDOWS_10_RS2)
+/**
+ * The NtQueryInformationByName routine returns various kinds of information about a file object by file name.
+ *
+ * \param ObjectAttributes Pointer to an OBJECT_ATTRIBUTES structure that contains the file's attributes, including file name.
+ * \param IoStatusBlock A pointer to an IO_STATUS_BLOCK structure that receives the final completion status, and the number of bytes written to the buffer pointed to by FileInformation.
+ * \param FileInformation Pointer to a caller-allocated buffer into which the routine writes the requested information about the file object.
+ * \param Length The size, in bytes, of the buffer pointed to by FileInformation.
+ * \param FileInformationClass Specifies the type of information to be returned about the file, in the buffer that FileInformation points to.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntqueryinformationbyname
+ * \remarks NtQueryInformationByName queries and returns the requested information without opening the actual file,
+ * making it more efficient than NtQueryInformationFile, which requires a file open and subsequent file close.
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtQueryInformationByName(
+    _In_ PCOBJECT_ATTRIBUTES ObjectAttributes,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _Out_writes_bytes_(Length) PVOID FileInformation,
+    _In_ ULONG Length,
+    _In_ FILE_INFORMATION_CLASS FileInformationClass
+    );
+#endif // PHNT_VERSION >= PHNT_WINDOWS_10_RS2
+
+/**
+ * The NtSetInformationFile routine changes various kinds of information about a file object.
+ *
+ * \param FileHandle A handle to the file object representing the file or directory.
+ * \param IoStatusBlock A pointer to an IO_STATUS_BLOCK structure that receives the final completion status, and the number of bytes written to the buffer pointed to by FileInformation.
+ * \param FileInformation Pointer to a buffer that contains the information to set for the file.
+ * \param Length The size, in bytes, of the buffer pointed to by FileInformation.
+ * \param FileInformationClass The type of information, supplied in the buffer pointed to by FileInformation, to set for the file.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntsetinformationfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtSetInformationFile(
+    _In_ HANDLE FileHandle,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_reads_bytes_(Length) PVOID FileInformation,
+    _In_ ULONG Length,
+    _In_ FILE_INFORMATION_CLASS FileInformationClass
+    );
+
+/**
+ * The NtQueryDirectoryFile routine returns various kinds of information about files in the directory specified by a given file handle.
+ *
+ * \param[in] FileHandle A handle for the file object that represents the directory for which information is being requested.
+ * \param[in] Event An optional handle for a caller-created event. The event is set to the Signaled state the requested operation is completed.
+ * \param[in] ApcRoutine An address of an optional, caller-supplied APC routine to be called when the requested operation completes.
+ * \param[in] ApcContext An address of an optional, caller-supplied APC or I/O completion object associated with the file object.
+ * \param[out] IoStatusBlock A pointer to an IO_STATUS_BLOCK structure that receives the final completion status, and the number of bytes written to the buffer pointed to by FileInformation.
+ * \param[out] FileInformation A pointer to a buffer that receives the desired information about the file.
+ * \param[in] Length The size, in bytes, of the buffer pointed to by FileInformation.
+ * \param[in] FileInformationClass The type of information to be returned about files in the directory.
+ * \param[in] ReturnSingleEntry Set to TRUE if only a single entry should be returned, FALSE otherwise.
+ * \param[in] FileName An optional pointer to a Unicode string search expression containing the name of a file (or multiple files, if wildcards are used) within the directory.
+ * \param[in] RestartScan Set to TRUE if the scan is to start at the first entry in the directory. Set to FALSE if resuming the scan from a previous call.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntquerydirectoryfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtQueryDirectoryFile(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _Out_writes_bytes_(Length) PVOID FileInformation,
+    _In_ ULONG Length,
+    _In_ FILE_INFORMATION_CLASS FileInformationClass,
+    _In_ BOOLEAN ReturnSingleEntry,
+    _In_opt_ PCUNICODE_STRING FileName,
+    _In_ BOOLEAN RestartScan
+    );
+
+// QueryFlags values for NtQueryDirectoryFileEx
+/**
+ * The scan will start at the first entry in the directory. If this flag is not set, the scan will resume from where the last query ended.
+ */
+#define FILE_QUERY_RESTART_SCAN 0x00000001
+/**
+ * Normally the return buffer is packed with as many matching directory entries that fit.
+ * If this flag is set, the file system will return only one directory entry at a time.
+ * This does make the operation less efficient.
+ */
+#define FILE_QUERY_RETURN_SINGLE_ENTRY 0x00000002
+/**
+ * The scan should start at a specified indexed position in the directory.
+ * This flag can only be set if you generate your own IRP_MJ_DIRECTORY_CONTROL IRP; the index is specified in the IRP.
+ * How the position is specified varies from file system to file system.
+ */
+#define FILE_QUERY_INDEX_SPECIFIED 0x00000004
+/**
+ * Any file system filters that perform directory virtualization or just-in-time expansion should simply pass the request
+ * through to the file system and return entries that are currently on disk. Not all file systems support this flag.
+ */
+#define FILE_QUERY_RETURN_ON_DISK_ENTRIES_ONLY 0x00000008
+/**
+ * File systems maintain per-FileObject directory cursor information. When multiple threads do queries using the same FileObject,
+ * access to the per-FileObject structure is single threaded to prevent corruption of the cursor state.
+ * This flag tells the file system to not update per-FileObject cursor state information thus allowing multiple threads
+ * to query in parallel using the same handle. It behaves as if SL_RESTART_SCAN is specified on each call. If a wild card pattern
+ * is given on the next call, the operation will not pick up where the last query ended.
+ * This allows for true asynchronous directory query support. Not all file systems support this flag.
+ */
+#define FILE_QUERY_NO_CURSOR_UPDATE 0x00000010 // RS5
+
+#if (PHNT_VERSION >= PHNT_WINDOWS_10_RS3)
+/**
+ * The NtQueryDirectoryFileEx routine returns various kinds of information about files in the directory specified by a given file handle.
+ *
+ * \param[in] FileHandle A handle for the file object that represents the directory for which information is being requested.
+ * \param[in] Event An optional handle for a caller-created event. The event is set to the Signaled state the requested operation is completed.
+ * \param[in] ApcRoutine An address of an optional, caller-supplied APC routine to be called when the requested operation completes.
+ * \param[in] ApcContext An address of an optional, caller-supplied APC or I/O completion object associated with the file object.
+ * \param[out] IoStatusBlock A pointer to an IO_STATUS_BLOCK structure that receives the final completion status, and the number of bytes written to the buffer pointed to by FileInformation.
+ * \param[out] FileInformation A pointer to a buffer that receives the desired information about the file.
+ * \param[in] Length The size, in bytes, of the buffer pointed to by FileInformation.
+ * \param[in] FileInformationClass The type of information to be returned about files in the directory.
+ * \param[in] QueryFlags One or more of the flags contained in SL_QUERY_DIRECTORY_MASK
+ * \param[in] FileName An optional pointer to a Unicode string search expression containing the name of a file (or multiple files, if wildcards are used) within the directory.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntquerydirectoryfileex
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtQueryDirectoryFileEx(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _Out_writes_bytes_(Length) PVOID FileInformation,
+    _In_ ULONG Length,
+    _In_ FILE_INFORMATION_CLASS FileInformationClass,
+    _In_ ULONG QueryFlags,
+    _In_opt_ PCUNICODE_STRING FileName
+    );
+#endif // PHNT_VERSION >= PHNT_WINDOWS_10_RS3
+
+/**
+ * The NtQueryEaFile routine returns extended attributes (EA) for a file.
+ *
+ * \param[in] FileHandle Handle to the file.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure.
+ * \param[out] Buffer Pointer to a caller-allocated output buffer where extended attributes are to be returned.
+ * \param[in] Length Size, in bytes, of the buffer.
+ * \param[in] ReturnSingleEntry Set to TRUE if only a single entry should be returned.
+ * \param[in, optional] EaList Pointer to a caller-allocated input buffer containing a FILE_GET_EA_INFORMATION structure.
+ * \param[in] EaListLength Length of the EaList buffer.
+ * \param[in, optional] EaIndex The index of the entry at which to begin scanning the extended-attribute list.
+ * \param[in] RestartScan Set to TRUE if the scan is to start at the first entry in the extended-attribute list.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwqueryeafile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtQueryEaFile(
+    _In_ HANDLE FileHandle,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _Out_writes_bytes_(Length) PVOID Buffer,
+    _In_ ULONG Length,
+    _In_ BOOLEAN ReturnSingleEntry,
+    _In_reads_bytes_opt_(EaListLength) PVOID EaList,
+    _In_ ULONG EaListLength,
+    _In_opt_ PULONG EaIndex,
+    _In_ BOOLEAN RestartScan
+    );
+
+/**
+ * The NtSetEaFile routine sets extended attributes (EA) for a file.
+ *
+ * \param[in] FileHandle Handle to the file.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure.
+ * \param[in] Buffer Pointer to a caller-allocated input buffer containing the extended attributes to be set.
+ * \param[in] Length Size, in bytes, of the buffer.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwseteafile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtSetEaFile(
+    _In_ HANDLE FileHandle,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_reads_bytes_(Length) PVOID Buffer,
+    _In_ ULONG Length
+    );
+
+/**
+ * The NtQueryQuotaInformationFile routine retrieves quota information for a volume.
+ *
+ * \param[in] FileHandle Handle to the file or volume.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure.
+ * \param[out] Buffer Pointer to a caller-allocated output buffer where quota information is to be returned.
+ * \param[in] Length Size, in bytes, of the buffer.
+ * \param[in] ReturnSingleEntry Set to TRUE if only a single entry should be returned.
+ * \param[in, optional] SidList Pointer to a caller-allocated input buffer containing a SID list.
+ * \param[in] SidListLength Length of the SidList buffer.
+ * \param[in, optional] StartSid Pointer to a SID identifying the entry at which to begin scanning the quota information.
+ * \param[in] RestartScan Set to TRUE if the scan is to start at the first entry in the quota information list.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwqueryquotainformationfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtQueryQuotaInformationFile(
+    _In_ HANDLE FileHandle,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _Out_writes_bytes_(Length) PVOID Buffer,
+    _In_ ULONG Length,
+    _In_ BOOLEAN ReturnSingleEntry,
+    _In_reads_bytes_opt_(SidListLength) PVOID SidList,
+    _In_ ULONG SidListLength,
+    _In_opt_ PSID StartSid,
+    _In_ BOOLEAN RestartScan
+    );
+
+/**
+ * The NtSetQuotaInformationFile routine sets quota information for a volume.
+ *
+ * \param[in] FileHandle Handle to the file or volume.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure.
+ * \param[in] Buffer Pointer to a caller-allocated input buffer containing the quota information to be set.
+ * \param[in] Length Size, in bytes, of the buffer.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwsetquotainformationfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtSetQuotaInformationFile(
+    _In_ HANDLE FileHandle,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_reads_bytes_(Length) PVOID Buffer,
+    _In_ ULONG Length
+    );
+
+/**
+ * The NtQueryVolumeInformationFile routine retrieves information about the volume associated with a given file, directory, storage device, or volume.
+ *
+ * \param[in] FileHandle A handle to the file, directory, storage device, or volume for which volume information is being requested.
+ * \param[out] IoStatusBlock A pointer to an IO_STATUS_BLOCK structure that receives the final completion status, and the number of bytes written to the buffer pointed to by FsInformation.
+ * \param[out] FsInformation A pointer to a caller-allocated buffer that receives the desired information about the volume.
+ * \param[in] Length The size, in bytes, of the buffer pointed to by FsInformation.
+ * \param[in] FsInformationClass The type of information to be returned about the volume.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntqueryvolumeinformationfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtQueryVolumeInformationFile(
+    _In_ HANDLE FileHandle,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _Out_writes_bytes_(Length) PVOID FsInformation,
+    _In_ ULONG Length,
+    _In_ FSINFOCLASS FsInformationClass
+    );
+
+/**
+ * The NtSetVolumeInformationFile routine modifies information about the volume associated with a given file, directory, storage device, or volume.
+ *
+ * \param[in] FileHandle A handle to the file, directory, storage device, or volume for which volume information is being requested.
+ * \param[out] IoStatusBlock A pointer to an IO_STATUS_BLOCK structure that receives the final completion status, and the number of bytes written to the buffer pointed to by FsInformation.
+ * \param[in] FsInformation A pointer to a caller-allocated buffer containing the volume information to be modified.
+ * \param[in] Length The size, in bytes, of the buffer pointed to by FsInformation.
+ * \param[in] FsInformationClass The type of information to set about the volume.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwsetvolumeinformationfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtSetVolumeInformationFile(
+    _In_ HANDLE FileHandle,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_reads_bytes_(Length) PVOID FsInformation,
+    _In_ ULONG Length,
+    _In_ FSINFOCLASS FsInformationClass
+    );
+
+/**
+ * The NtCancelIoFile routine cancels all pending input/output (I/O) operations that are issued by the calling thread for the specified file.
+ *
+ * \param[in] FileHandle Handle to the file.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/ioapiset/nf-ioapiet-cancelio
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCancelIoFile(
+    _In_ HANDLE FileHandle,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock
+    );
+
+/**
+ * The NtCancelIoFileEx routine marks any outstanding I/O operations for the specified file handle.
+ *
+ * \param[in] FileHandle Handle to the file.
+ * \param[in, optional] IoRequestToCancel Pointer to an IO_STATUS_BLOCK structure that identifies the I/O request to cancel.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/ioapiset/nf-ioapiet-cancelioex
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCancelIoFileEx(
+    _In_ HANDLE FileHandle,
+    _In_opt_ PIO_STATUS_BLOCK IoRequestToCancel,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock
+    );
+
+/**
+ * The NtCancelSynchronousIoFile routine marks pending synchronous I/O operations that are issued by the specified thread as canceled.
+ *
+ * \param[in] ThreadHandle Handle to the thread.
+ * \param[in, optional] IoRequestToCancel Pointer to an IO_STATUS_BLOCK structure that identifies the I/O request to cancel.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/ioapiset/nf-ioapiet-cancelsynchronousio
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCancelSynchronousIoFile(
+    _In_ HANDLE ThreadHandle,
+    _In_opt_ PIO_STATUS_BLOCK IoRequestToCancel,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock
+    );
+
+/**
+ * The NtDeviceIoControlFile function sends a control code directly to a specified device driver, causing the corresponding driver to perform the specified operation.
+ *
+ * \param[in] FileHandle A handle to the file object representing the file or directory on which the specified action is to be performed.
+ * \param[in] Event A handle for a caller-created event. This parameter is optional and can be NULL. It must be NULL if the caller will wait for the FileHandle to be set to the Signaled state.
+ * \param[in] ApcRoutine Address of a caller-supplied APC routine to be called when the requested operation completes. This parameter is optional and can be NULL.
+ * \param[in] ApcContext Pointer to a caller-determined context area. This parameter value is used as the APC context if the caller supplies an APC, or is used as the completion context if an I/O completion object has been associated with the file object.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure that receives the final completion status and information about the operation.
+ * \param[in] IoControlCode IOCTL_XXX code that indicates which device I/O control operation is to be carried out on, usually by the underlying device driver.
+ * \param[in] InputBuffer Pointer to a caller-allocated input buffer that contains device-specific information to be given to the target driver.
+ * \param[in] InputBufferLength Size, in bytes, of the buffer at InputBuffer. This value is ignored if InputBuffer is NULL.
+ * \param[out] OutputBuffer Pointer to a caller-allocated output buffer in which information is returned from the target driver.
+ * \param[in] OutputBufferLength Size, in bytes, of the buffer at OutputBuffer. This value is ignored if OutputBuffer is NULL.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwdeviceiocontrolfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtDeviceIoControlFile(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ ULONG IoControlCode,
+    _In_reads_bytes_opt_(InputBufferLength) PVOID InputBuffer,
+    _In_ ULONG InputBufferLength,
+    _Out_writes_bytes_opt_(OutputBufferLength) PVOID OutputBuffer,
+    _In_ ULONG OutputBufferLength
+    );
+
+/**
+ * The NtFsControlFile function sends a control code directly to a file system or filter driver, causing the corresponding driver to perform the specified action.
+ *
+ * \param[in] FileHandle A handle to the file object representing the file or directory on which the specified action is to be performed.
+ * \param[in] Event A handle for a caller-created event. This parameter is optional and can be NULL. It must be NULL if the caller will wait for the FileHandle to be set to the Signaled state.
+ * \param[in] ApcRoutine Address of a caller-supplied APC routine to be called when the requested operation completes. This parameter is optional and can be NULL.
+ * \param[in] ApcContext Pointer to a caller-determined context area. This parameter value is used as the APC context if the caller supplies an APC, or is used as the completion context if an I/O completion object has been associated with the file object.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure that receives the final completion status and information about the operation.
+ * \param[in] FsControlCode FSCTL_XXX code that indicates which file system control operation is to be carried out.
+ * \param[in] InputBuffer Pointer to a caller-allocated input buffer that contains device-specific information to be given to the target driver.
+ * \param[in] InputBufferLength Size, in bytes, of the buffer at InputBuffer. This value is ignored if InputBuffer is NULL.
+ * \param[out] OutputBuffer Pointer to a caller-allocated output buffer in which information is returned from the target driver.
+ * \param[in] OutputBufferLength Size, in bytes, of the buffer at OutputBuffer. This value is ignored if OutputBuffer is NULL.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-zwfscontrolfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtFsControlFile(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ ULONG FsControlCode,
+    _In_reads_bytes_opt_(InputBufferLength) PVOID InputBuffer,
+    _In_ ULONG InputBufferLength,
+    _Out_writes_bytes_opt_(OutputBufferLength) PVOID OutputBuffer,
+    _In_ ULONG OutputBufferLength
+    );
+
+/**
+ * The NtReadFile function reads data from an open file.
+ *
+ * \param[in] FileHandle A handle to the file object representing the file or directory on which the specified action is to be performed.
+ * \param[in] Event A handle for a caller-created event. This parameter is optional and can be NULL. It must be NULL if the caller will wait for the FileHandle to be set to the Signaled state.
+ * \param[in] ApcRoutine Address of a caller-supplied APC routine to be called when the requested operation completes. This parameter is optional and can be NULL.
+ * \param[in] ApcContext Pointer to a caller-determined context area. This parameter value is used as the APC context if the caller supplies an APC, or is used as the completion context if an I/O completion object has been associated with the file object.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure that receives the final completion status and information about the operation.
+ * \param[out] Buffer Pointer to a caller-allocated buffer that receives the data read from the file.
+ * \param[in] Length The size, in bytes, of the buffer pointed to by Buffer.
+ * \param[in] ByteOffset Pointer to a variable that specifies the starting byte offset in the file where the read operation will begin.
+ * \param[in] Key Device and intermediate drivers should set this pointer to NULL.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwreadfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtReadFile(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _Out_writes_bytes_(Length) PVOID Buffer,
+    _In_ ULONG Length,
+    _In_opt_ PLARGE_INTEGER ByteOffset,
+    _In_opt_ PULONG Key
+    );
+
+/**
+ * The NtWriteFile function writes data to an open file.
+ *
+ * \param[in] FileHandle A handle to the file object representing the file or directory on which the specified action is to be performed.
+ * \param[in] Event A handle for a caller-created event. This parameter is optional and can be NULL. It must be NULL if the caller will wait for the FileHandle to be set to the Signaled state.
+ * \param[in] ApcRoutine Address of a caller-supplied APC routine to be called when the requested operation completes. This parameter is optional and can be NULL.
+ * \param[in] ApcContext Pointer to a caller-determined context area. This parameter value is used as the APC context if the caller supplies an APC, or is used as the completion context if an I/O completion object has been associated with the file object.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure that receives the final completion status and information about the operation.
+ * \param[in] Buffer Pointer to a caller-allocated buffer that contains the data to write to the file.
+ * \param[in] Length The size, in bytes, of the buffer pointed to by Buffer.
+ * \param[in] ByteOffset Pointer to a variable that specifies the starting byte offset in the file for beginning the write operation.
+ * \param[in] Key Device and intermediate drivers should set this pointer to NULL.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwwritefile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtWriteFile(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_reads_bytes_(Length) PVOID Buffer,
+    _In_ ULONG Length,
+    _In_opt_ PLARGE_INTEGER ByteOffset,
+    _In_opt_ PULONG Key
+    );
+
+/**
+ * The NtReadFileScatter routine reads data from a file and scatters it into a set of buffers.
+ *
+ * \param[in] FileHandle Handle to the file.
+ * \param[in, optional] Event Handle to an event.
+ * \param[in, optional] ApcRoutine Pointer to an APC routine.
+ * \param[in, optional] ApcContext Pointer to an APC context.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure.
+ * \param[in] SegmentArray Pointer to an array of FILE_SEGMENT_ELEMENT structures that specify the buffers.
+ * \param[in] Length The number of bytes to be read from the file.
+ * \param[in, optional] ByteOffset Pointer to a variable that specifies the starting byte offset in the file.
+ * \param[in, optional] Key Device and intermediate drivers should set this pointer to NULL.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-readfilescatter
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtReadFileScatter(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ PFILE_SEGMENT_ELEMENT SegmentArray,
+    _In_ ULONG Length,
+    _In_opt_ PLARGE_INTEGER ByteOffset,
+    _In_opt_ PULONG Key
+    );
+
+/**
+ * The NtWriteFileGather routine gathers data from a set of buffers and writes it to a file.
+ *
+ * \param[in] FileHandle Handle to the file.
+ * \param[in, optional] Event Handle to an event.
+ * \param[in, optional] ApcRoutine Pointer to an APC routine.
+ * \param[in, optional] ApcContext Pointer to an APC context.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure.
+ * \param[in] SegmentArray Pointer to an array of FILE_SEGMENT_ELEMENT structures that specify the buffers.
+ * \param[in] Length The number of bytes to be written to the file.
+ * \param[in, optional] ByteOffset Pointer to a variable that specifies the starting byte offset in the file.
+ * \param[in, optional] Key Device and intermediate drivers should set this pointer to NULL.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-writefilegather
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtWriteFileGather(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ PFILE_SEGMENT_ELEMENT SegmentArray,
+    _In_ ULONG Length,
+    _In_opt_ PLARGE_INTEGER ByteOffset,
+    _In_opt_ PULONG Key
+    );
+
+/**
+ * The NtLockFile routine locks a specified range of bytes in a file.
+ *
+ * \param[in] FileHandle Handle to the file.
+ * \param[in, optional] Event Handle to an event.
+ * \param[in, optional] ApcRoutine Pointer to an APC routine.
+ * \param[in, optional] ApcContext Pointer to an APC context.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure.
+ * \param[in] ByteOffset Pointer to a variable that specifies the starting byte offset of the range to be locked.
+ * \param[in] Length Pointer to a variable that specifies the length of the range to be locked.
+ * \param[in] Key The value specified for the lock.
+ * \param[in] FailImmediately If TRUE, the routine fails if the range is already locked.
+ * \param[in] ExclusiveLock If TRUE, the routine requests an exclusive lock.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-lockfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtLockFile(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ PLARGE_INTEGER ByteOffset,
+    _In_ PLARGE_INTEGER Length,
+    _In_ ULONG Key,
+    _In_ BOOLEAN FailImmediately,
+    _In_ BOOLEAN ExclusiveLock
+    );
+
+/**
+ * The NtUnlockFile routine unlocks a specified range of bytes in a file.
+ *
+ * \param[in] FileHandle Handle to the file.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure.
+ * \param[in] ByteOffset Pointer to a variable that specifies the starting byte offset of the range to be unlocked.
+ * \param[in] Length Pointer to a variable that specifies the length of the range to be unlocked.
+ * \param[in] Key The value specified for the lock.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-unlockfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtUnlockFile(
+    _In_ HANDLE FileHandle,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ PLARGE_INTEGER ByteOffset,
+    _In_ PLARGE_INTEGER Length,
+    _In_ ULONG Key
+    );
+
+/**
+ * The NtQueryAttributesFile function retrieves basic attributes for the specified file.
+ *
+ * \param[in] ObjectAttributes A pointer to an OBJECT_ATTRIBUTES structure that supplies the attributes to be used for the file object.
+ * \param[out] FileInformation A pointer to a FILE_BASIC_INFORMATION structure to receive the returned file attribute information.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/devnotes/ntqueryattributesfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtQueryAttributesFile(
+    _In_ PCOBJECT_ATTRIBUTES ObjectAttributes,
+    _Out_ PFILE_BASIC_INFORMATION FileInformation
+    );
+
+/**
+ * The NtQueryFullAttributesFile function retrieves network open information for the specified file.
+ *
+ * \param[in] ObjectAttributes A pointer to an OBJECT_ATTRIBUTES structure that supplies the attributes to be used for the file object.
+ * \param[out] FileInformation A pointer to a FILE_NETWORK_OPEN_INFORMATION structure that receives the returned file attributes information.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwqueryfullattributesfile
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtQueryFullAttributesFile(
+    _In_ PCOBJECT_ATTRIBUTES ObjectAttributes,
+    _Out_ PFILE_NETWORK_OPEN_INFORMATION FileInformation
+    );
+
+//
+// NtNotifyChangeDirectoryFile information
+//
+
+#define FILE_NOTIFY_CHANGE_FILE_NAME    0x00000001   // winnt
+#define FILE_NOTIFY_CHANGE_DIR_NAME     0x00000002   // winnt
+#define FILE_NOTIFY_CHANGE_NAME         0x00000003
+#define FILE_NOTIFY_CHANGE_ATTRIBUTES   0x00000004   // winnt
+#define FILE_NOTIFY_CHANGE_SIZE         0x00000008   // winnt
+#define FILE_NOTIFY_CHANGE_LAST_WRITE   0x00000010   // winnt
+#define FILE_NOTIFY_CHANGE_LAST_ACCESS  0x00000020   // winnt
+#define FILE_NOTIFY_CHANGE_CREATION     0x00000040   // winnt
+#define FILE_NOTIFY_CHANGE_EA           0x00000080
+#define FILE_NOTIFY_CHANGE_SECURITY     0x00000100   // winnt
+#define FILE_NOTIFY_CHANGE_STREAM_NAME  0x00000200
+#define FILE_NOTIFY_CHANGE_STREAM_SIZE  0x00000400
+#define FILE_NOTIFY_CHANGE_STREAM_WRITE 0x00000800
+#define FILE_NOTIFY_VALID_MASK          0x00000fff
+
+#define FILE_ACTION_ADDED                   0x00000001   // winnt
+#define FILE_ACTION_REMOVED                 0x00000002   // winnt
+#define FILE_ACTION_MODIFIED                0x00000003   // winnt
+#define FILE_ACTION_RENAMED_OLD_NAME        0x00000004   // winnt
+#define FILE_ACTION_RENAMED_NEW_NAME        0x00000005   // winnt
+#define FILE_ACTION_ADDED_STREAM            0x00000006
+#define FILE_ACTION_REMOVED_STREAM          0x00000007
+#define FILE_ACTION_MODIFIED_STREAM         0x00000008
+#define FILE_ACTION_REMOVED_BY_DELETE       0x00000009
+#define FILE_ACTION_ID_NOT_TUNNELLED        0x0000000A
+#define FILE_ACTION_TUNNELLED_ID_COLLISION  0x0000000B
+
+/**
+ * The NtNotifyChangeDirectoryFile routine creates a change notification request for a directory.
+ *
+ * \param[in] FileHandle Handle to the directory.
+ * \param[in, optional] Event Handle to an event.
+ * \param[in, optional] ApcRoutine Pointer to an APC routine.
+ * \param[in, optional] ApcContext Pointer to an APC context.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure.
+ * \param[out] Buffer Pointer to a buffer that receives change information.
+ * \param[in] Length Size, in bytes, of the buffer.
+ * \param[in] CompletionFilter Specifies the type of changes to notify.
+ * \param[in] WatchTree If TRUE, the routine monitors the directory tree.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesw
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtNotifyChangeDirectoryFile(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _Out_writes_bytes_(Length) PVOID Buffer, // FILE_NOTIFY_INFORMATION
+    _In_ ULONG Length,
+    _In_ ULONG CompletionFilter,
+    _In_ BOOLEAN WatchTree
+    );
+
+// private
+typedef enum _DIRECTORY_NOTIFY_INFORMATION_CLASS
+{
+    DirectoryNotifyInformation = 1, // FILE_NOTIFY_INFORMATION
+    DirectoryNotifyExtendedInformation, // FILE_NOTIFY_EXTENDED_INFORMATION
+    DirectoryNotifyFullInformation, // FILE_NOTIFY_FULL_INFORMATION // since 22H2
+    DirectoryNotifyMaximumInformation
+} DIRECTORY_NOTIFY_INFORMATION_CLASS, *PDIRECTORY_NOTIFY_INFORMATION_CLASS;
+
+#if !defined(NTDDI_WIN10_RS5) || (NTDDI_VERSION < NTDDI_WIN10_RS5)
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_NOTIFY_INFORMATION
+{
+   ULONG NextEntryOffset;
+   ULONG Action;
+   ULONG FileNameLength;
+   WCHAR FileName[1];
+} FILE_NOTIFY_INFORMATION, *PFILE_NOTIFY_INFORMATION;
+
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_NOTIFY_EXTENDED_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG Action;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastModificationTime;
+    LARGE_INTEGER LastChangeTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER AllocatedLength;
+    LARGE_INTEGER FileSize;
+    ULONG FileAttributes;
+    union
+    {
+        ULONG ReparsePointTag;
+        ULONG EaSize;
+    };
+    FILE_INTERNAL_INFORMATION FileId;
+    FILE_INTERNAL_INFORMATION ParentFileId;
+    ULONG FileNameLength;
+    WCHAR FileName[1];
+} FILE_NOTIFY_EXTENDED_INFORMATION, *PFILE_NOTIFY_EXTENDED_INFORMATION;
+#endif // NTDDI_WIN10_RS5
+
+#define FILE_NAME_FLAG_HARDLINK      0    // not part of a name pair
+#define FILE_NAME_FLAG_NTFS          0x01 // NTFS name in a name pair
+#define FILE_NAME_FLAG_DOS           0x02 // DOS name in a name pair
+#define FILE_NAME_FLAG_BOTH          0x03 // NTFS+DOS combined name
+#define FILE_NAME_FLAGS_UNSPECIFIED  0x80 // not specified by file system (do not combine with other flags)
+
+#if !defined(NTDDI_WIN10_NI) || (NTDDI_VERSION < NTDDI_WIN10_NI)
+_Struct_size_bytes_(NextEntryOffset)
+typedef struct _FILE_NOTIFY_FULL_INFORMATION
+{
+    ULONG NextEntryOffset;
+    ULONG Action;
+    LARGE_INTEGER CreationTime;
+    LARGE_INTEGER LastModificationTime;
+    LARGE_INTEGER LastChangeTime;
+    LARGE_INTEGER LastAccessTime;
+    LARGE_INTEGER AllocatedLength;
+    LARGE_INTEGER FileSize;
+    ULONG FileAttributes;
+    union
+    {
+        ULONG ReparsePointTag;
+        ULONG EaSize;
+    };
+    FILE_INTERNAL_INFORMATION FileId;
+    FILE_INTERNAL_INFORMATION ParentFileId;
+    USHORT FileNameLength;
+    BYTE FileNameFlags;
+    BYTE Reserved;
+    WCHAR FileName[1];
+} FILE_NOTIFY_FULL_INFORMATION, *PFILE_NOTIFY_FULL_INFORMATION;
+#endif // NTDDI_WIN10_NI
+
+#if (PHNT_VERSION >= PHNT_WINDOWS_10_RS3)
+/**
+ * The NtNotifyChangeDirectoryFileEx routine creates a change notification request for a directory.
+ *
+ * \param[in] FileHandle Handle to the directory.
+ * \param[in, optional] Event Handle to an event.
+ * \param[in, optional] ApcRoutine Pointer to an APC routine.
+ * \param[in, optional] ApcContext Pointer to an APC context.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure.
+ * \param[out] Buffer Pointer to a buffer that receives change information.
+ * \param[in] Length Size, in bytes, of the buffer.
+ * \param[in] CompletionFilter Specifies the type of changes to notify.
+ * \param[in] WatchTree If TRUE, the routine monitors the directory tree.
+ * \param[in, optional] DirectoryNotifyInformationClass The type of information to return.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-readdirectorychangesexw
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtNotifyChangeDirectoryFileEx(
+    _In_ HANDLE FileHandle,
+    _In_opt_ HANDLE Event,
+    _In_opt_ PIO_APC_ROUTINE ApcRoutine,
+    _In_opt_ PVOID ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _Out_writes_bytes_(Length) PVOID Buffer,
+    _In_ ULONG Length,
+    _In_ ULONG CompletionFilter,
+    _In_ BOOLEAN WatchTree,
+    _In_opt_ DIRECTORY_NOTIFY_INFORMATION_CLASS DirectoryNotifyInformationClass
+    );
+#endif // PHNT_VERSION >= PHNT_WINDOWS_10_RS3
+
+/**
+ * The NtLoadDriver function loads a driver specified by the DriverServiceName parameter.
+ *
+ * \param[in] DriverServiceName A pointer to a UNICODE_STRING structure that specifies the name of the driver service to load.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwloaddriver
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtLoadDriver(
+    _In_ PCUNICODE_STRING DriverServiceName
+    );
+
+/**
+ * The NtUnloadDriver function unloads a driver specified by the DriverServiceName parameter.
+ *
+ * \param[in] DriverServiceName A pointer to a UNICODE_STRING structure that specifies the name of the driver service to unload.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/nf-wdm-zwunloaddriver
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtUnloadDriver(
+    _In_ PCUNICODE_STRING DriverServiceName
+    );
+
+//
+// I/O completion port
+//
+
+#ifndef IO_COMPLETION_QUERY_STATE
+#define IO_COMPLETION_QUERY_STATE 0x0001
+#endif
+
+#ifndef IO_COMPLETION_MODIFY_STATE
+#define IO_COMPLETION_MODIFY_STATE 0x0002
+#endif
+
+#ifndef IO_COMPLETION_ALL_ACCESS
+#define IO_COMPLETION_ALL_ACCESS (IO_COMPLETION_QUERY_STATE|IO_COMPLETION_MODIFY_STATE|STANDARD_RIGHTS_REQUIRED|SYNCHRONIZE)
+#endif
+
+/**
+ * The IO_COMPLETION_INFORMATION_CLASS enumeration type specifies the type of I/O completion information to be queried.
+ */
+typedef enum _IO_COMPLETION_INFORMATION_CLASS
+{
+    IoCompletionBasicInformation
+} IO_COMPLETION_INFORMATION_CLASS;
+
+/**
+ * The IO_COMPLETION_BASIC_INFORMATION structure contains the depth of an I/O completion port.
+ */
+typedef struct _IO_COMPLETION_BASIC_INFORMATION
+{
+    LONG Depth;
+} IO_COMPLETION_BASIC_INFORMATION, *PIO_COMPLETION_BASIC_INFORMATION;
+
+/**
+ * The NtCreateIoCompletion routine creates an I/O completion port and associates it with a specified file handle,
+ * or creates an I/O completion port that is not yet associated with a file handle, allowing association at a later time.
+ *
+ * \param[out] IoCompletionHandle Pointer to a variable that receives a handle to the I/O completion port.
+ * \param[in] DesiredAccess The requested access to the object.
+ * \param[in] ObjectAttributes Pointer to an OBJECT_ATTRIBUTES structure that contains the name to an existing I/O completion port or NULL.
+ * \param[out] NumberOfConcurrentThreads The maximum number of threads that the operating system can allow to concurrently process
+ * I/O completion packets for the I/O completion port. This parameter is ignored if the ExistingCompletionPort parameter is not NULL.
+ * If this parameter is zero, the system allows as many concurrently running threads as there are processors in the system.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/fileio/createiocompletionport
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCreateIoCompletion(
+    _Out_ PHANDLE IoCompletionHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_opt_ PCOBJECT_ATTRIBUTES ObjectAttributes,
+    _In_opt_ ULONG NumberOfConcurrentThreads
+    );
+
+/**
+ * The NtOpenIoCompletion routine opens an existing I/O completion port object.
+ *
+ * \param[out] IoCompletionHandle Pointer to a variable that receives a handle to the I/O completion port.
+ * \param[in] DesiredAccess The requested access to the object.
+ * \param[in] ObjectAttributes Pointer to an OBJECT_ATTRIBUTES structure that specifies the name and other attributes.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/fileio/createiocompletionport
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtOpenIoCompletion(
+    _Out_ PHANDLE IoCompletionHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_ PCOBJECT_ATTRIBUTES ObjectAttributes
+    );
+
+/**
+ * The NtQueryIoCompletion routine queries information about an I/O completion port.
+ *
+ * \param[in] IoCompletionHandle Handle to the I/O completion port.
+ * \param[in] IoCompletionInformationClass The type of information to query.
+ * \param[out] IoCompletionInformation Pointer to a buffer that receives the information.
+ * \param[in] IoCompletionInformationLength The size of the buffer.
+ * \param[out, optional] ReturnLength Pointer to a variable that receives the number of bytes returned.
+ * \return NTSTATUS Successful or errant status.
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtQueryIoCompletion(
+    _In_ HANDLE IoCompletionHandle,
+    _In_ IO_COMPLETION_INFORMATION_CLASS IoCompletionInformationClass,
+    _Out_writes_bytes_(IoCompletionInformationLength) PVOID IoCompletionInformation,
+    _In_ ULONG IoCompletionInformationLength,
+    _Out_opt_ PULONG ReturnLength
+    );
+
+/**
+ * The NtSetIoCompletion routine queues an I/O completion packet to an I/O completion port.
+ *
+ * \param[in] IoCompletionHandle Handle to the I/O completion port.
+ * \param[in, optional] KeyContext The value specified when the port was associated with a file handle.
+ * \param[in, optional] ApcContext The value specified when the I/O operation was issued.
+ * \param[in] IoStatus The completion status for the I/O operation.
+ * \param[in] IoStatusInformation The number of bytes transferred or other information.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/ioapiset/nf-ioapiet-postqueuedcompletionstatus
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtSetIoCompletion(
+    _In_ HANDLE IoCompletionHandle,
+    _In_opt_ PVOID KeyContext,
+    _In_opt_ PVOID ApcContext,
+    _In_ NTSTATUS IoStatus,
+    _In_ ULONG_PTR IoStatusInformation
+    );
+
+/**
+ * The NtSetIoCompletionEx routine queues an I/O completion packet to an I/O completion port using a completion packet.
+ *
+ * \param[in] IoCompletionHandle Handle to the I/O completion port.
+ * \param[in] IoCompletionPacketHandle Handle to a completion packet.
+ * \param[in, optional] KeyContext The value specified when the port was associated with a file handle.
+ * \param[in, optional] ApcContext The value specified when the I/O operation was issued.
+ * \param[in] IoStatus The completion status for the I/O operation.
+ * \param[in] IoStatusInformation The number of bytes transferred or other information.
+ * \return NTSTATUS Successful or errant status.
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtSetIoCompletionEx(
+    _In_ HANDLE IoCompletionHandle,
+    _In_ HANDLE IoCompletionPacketHandle,
+    _In_opt_ PVOID KeyContext,
+    _In_opt_ PVOID ApcContext,
+    _In_ NTSTATUS IoStatus,
+    _In_ ULONG_PTR IoStatusInformation
+    );
+
+/**
+ * The NtRemoveIoCompletion routine removes an entry from an I/O completion port.
+ *
+ * \param[in] IoCompletionHandle Handle to the I/O completion port.
+ * \param[out] KeyContext Pointer to a variable that receives the key context.
+ * \param[out] ApcContext Pointer to a variable that receives the APC context.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure that receives the completion status.
+ * \param[in, optional] Timeout Optional pointer to a timeout value.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/devnotes/ntremoveiocompletion
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtRemoveIoCompletion(
+    _In_ HANDLE IoCompletionHandle,
+    _Out_ PVOID *KeyContext,
+    _Out_ PVOID *ApcContext,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_opt_ PLARGE_INTEGER Timeout
+    );
+
+// private
+typedef struct _FILE_IO_COMPLETION_INFORMATION
+{
+    PVOID KeyContext;
+    PVOID ApcContext;
+    IO_STATUS_BLOCK IoStatusBlock;
+} FILE_IO_COMPLETION_INFORMATION, *PFILE_IO_COMPLETION_INFORMATION;
+
+/**
+ * The NtRemoveIoCompletionEx routine removes multiple entries from an I/O completion port.
+ *
+ * \param[in] IoCompletionHandle Handle to the I/O completion port.
+ * \param[out] IoCompletionInformation Pointer to an array of FILE_IO_COMPLETION_INFORMATION structures.
+ * \param[in] Count The number of entries to remove.
+ * \param[out] NumEntriesRemoved Pointer to a variable that receives the number of entries removed.
+ * \param[in, optional] Timeout Optional pointer to a timeout value.
+ * \param[in] Alertable Whether the wait is alertable.
+ * \return NTSTATUS Successful or errant status.
+ * \remarks If Count > 16, allocates temp kernel buffer (ExAllocatePool2) and caps fallback behavior if allocation fails.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/ioapiset/nf-ioapiet-getqueuedcompletionstatusex
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtRemoveIoCompletionEx(
+    _In_ HANDLE IoCompletionHandle,
+    _Out_writes_to_(Count, *NumEntriesRemoved) PFILE_IO_COMPLETION_INFORMATION IoCompletionInformation,
+    _In_ ULONG Count,
+    _Out_ PULONG NumEntriesRemoved,
+    _In_opt_ PLARGE_INTEGER Timeout,
+    _In_ BOOLEAN Alertable
+    );
+
+//
+// Wait completion packet
+//
+
+#if (PHNT_VERSION >= PHNT_WINDOWS_8)
+
+#ifndef WAIT_COMPLETION_PACKET_SET_STATE
+#define WAIT_COMPLETION_PACKET_SET_STATE 0x0001
+#endif
+
+#ifndef WAIT_COMPLETION_PACKET_ALL_ACCESS
+#define WAIT_COMPLETION_PACKET_ALL_ACCESS (WAIT_COMPLETION_PACKET_SET_STATE | STANDARD_RIGHTS_REQUIRED)
+#endif
+
+/**
+ * The NtCreateWaitCompletionPacket routine creates a wait completion packet object.
+ *
+ * A wait completion packet is a kernel object that can be associated with wait
+ * or I/O completion sources and later queried via I/O completion mechanisms.
+ *
+ * \param WaitCompletionPacketHandle Pointer to a variable that receives a handle
+ *        to the newly created wait completion packet object.
+ * \param DesiredAccess The access mask that specifies the requested access to
+ *        the wait completion packet object.
+ * \param ObjectAttributes Optional pointer to an OBJECT_ATTRIBUTES structure that
+ *        supplies the object name and other attributes. May be NULL.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/devnotes/ntcreatewaitcompletionpacket
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCreateWaitCompletionPacket(
+    _Out_ PHANDLE WaitCompletionPacketHandle,
+    _In_ ACCESS_MASK DesiredAccess,
+    _In_opt_ PCOBJECT_ATTRIBUTES ObjectAttributes
+    );
+
+/**
+ * The NtAssociateWaitCompletionPacket routine associates a wait completion packet
+ * with an I/O completion port or other target object so that a completion packet
+ * will be queued when the target object becomes signaled or an I/O completes.
+ *
+ * This routine links the specified wait completion packet with the target
+ * completion object so the packet will carry the supplied context and status
+ * information when it is delivered.
+ *
+ * \param[in] WaitCompletionPacketHandle Handle to the wait completion packet object.
+ * \param[in] IoCompletionHandle Handle to an I/O completion port (or compatible object)
+ *        with which the wait completion packet should be associated.
+ * \param[in] TargetObjectHandle Handle to the object to watch for completion or
+ *        signalling (for example, a waitable kernel object).
+ * \param[in] KeyContext Optional pointer to caller-specified context that will be
+ *        stored in the completion packet and returned to the consumer.
+ * \param[in] ApcContext Optional pointer to caller-specified APC/context value that
+ *        will be stored in the completion packet and returned to the consumer.
+ * \param[in] IoStatus The NTSTATUS value to be placed in the completion packet.
+ * \param[in] IoStatusInformation Additional information ( ULONG_PTR ) to be placed
+ *        in the completion packet (commonly used for number of bytes transferred).
+ * \param[out] AlreadySignaled Optional pointer to a BOOLEAN that, on return, is set
+ *        to TRUE if the packet was already signaled at the time of association;
+ *        otherwise FALSE. May be NULL.
+ * \return NTSTATUS Successful or errant status.
+ * \remarks Use this routine to arrange for notification of a target object's
+ *          completion by queuing a wait completion packet containing the
+ *          supplied context and status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/devnotes/ntassociatewaitcompletionpacket
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtAssociateWaitCompletionPacket(
+    _In_ HANDLE WaitCompletionPacketHandle,
+    _In_ HANDLE IoCompletionHandle,
+    _In_ HANDLE TargetObjectHandle,
+    _In_opt_ PVOID KeyContext,
+    _In_opt_ PVOID ApcContext,
+    _In_ NTSTATUS IoStatus,
+    _In_ ULONG_PTR IoStatusInformation,
+    _Out_opt_ PBOOLEAN AlreadySignaled
+    );
+
+/**
+ * The NtCancelWaitCompletionPacket routine cancels a previously associated wait
+ * completion packet or removes a signaled packet from its queue.
+ *
+ * \param[in] WaitCompletionPacketHandle Handle to the wait completion packet object to cancel.
+ * \param[in] RemoveSignaledPacket If TRUE and the packet is already signaled, remove
+ *        the signaled packet from the target queue; if FALSE, cancellation will
+ *        prevent future signaling but will not remove an already queued packet.
+ * \return NTSTATUS Successful or errant status.
+ * \remarks After successful cancellation, the wait completion packet will no
+ *          longer be delivered as a result of the previously associated target.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/devnotes/ntcancelwaitcompletionpacket
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCancelWaitCompletionPacket(
+    _In_ HANDLE WaitCompletionPacketHandle,
+    _In_ BOOLEAN RemoveSignaledPacket
+    );
+
+#endif // (PHNT_VERSION >= PHNT_WINDOWS_8)
+
+#if (PHNT_VERSION >= PHNT_WINDOWS_11)
+/**
+ * The NtCopyFileChunk routine copies a contiguous range of bytes (a chunk)
+ * from a source file to a destination file. The operation may be performed
+ * synchronously or asynchronously depending on the file handles and flags.
+ *
+ * \param[in] SourceHandle Handle to the source file. The handle must be opened
+ *            with access that allows reading the specified range.
+ * \param[in] DestinationHandle Handle to the destination file. The handle must
+ *            be opened with access that allows writing to the specified range.
+ * \param[in] EventHandle Optional handle to an event object. If provided,
+ *            the event is set when the operation completes. May be NULL.
+ * \param[out] IoStatusBlock Pointer to an IO_STATUS_BLOCK structure that
+ *            receives the final completion status and information about the operation.
+ * \param[in] Length The number of bytes to copy.
+ * \param[in] SourceOffset Pointer to a LARGE_INTEGER specifying the byte
+ *            offset in the source file at which copying begins.
+ * \param[in] DestOffset Pointer to a LARGE_INTEGER specifying the byte
+ *            offset in the destination file at which copying begins.
+ * \param[in] SourceKey Optional pointer to a source file key. May be NULL.
+ * \param[in] DestKey Optional pointer to a destination file key. May be NULL.
+ * \param[in] Flags Additional flags controlling copy semantics.
+ * \return NTSTATUS Successful or errant status.
+ * \remarks The exact meaning and required privileges for `Flags` and keys may
+ *          depend on the Windows version and file system. Consumers should
+ *          verify handle access rights and the platform's support for this call.
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCopyFileChunk(
+    _In_ HANDLE SourceHandle,
+    _In_ HANDLE DestinationHandle,
+    _In_opt_ HANDLE EventHandle,
+    _Out_ PIO_STATUS_BLOCK IoStatusBlock,
+    _In_ ULONG Length,
+    _In_ PLARGE_INTEGER SourceOffset,
+    _In_ PLARGE_INTEGER DestOffset,
+    _In_opt_ PULONG SourceKey,
+    _In_opt_ PULONG DestKey,
+    _In_ ULONG Flags
+    );
+#endif // (PHNT_VERSION >= PHNT_WINDOWS_11)
+
+//
+// I/O Ring
+//
+
+#if (PHNT_VERSION >= PHNT_WINDOWS_11)
+/**
+ * The NtCreateIoRing routine creates an I/O ring.
+ *
+ * \param[out] IoRingHandle Pointer to a variable that receives a handle to the I/O ring.
+ * \param[in] CreateParametersLength The size of the create parameters buffer.
+ * \param[in] CreateParameters Pointer to a caller-allocated buffer containing the create parameters.
+ * \param[in] OutputParametersLength The size of the output parameters buffer.
+ * \param[out] OutputParameters Pointer to a buffer that receives the output parameters.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/ioringapi/nf-ioringapi-createioring
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtCreateIoRing(
+    _Out_ PHANDLE IoRingHandle,
+    _In_ ULONG CreateParametersLength,
+    _In_ PVOID CreateParameters,
+    _In_ ULONG OutputParametersLength,
+    _Out_ PVOID OutputParameters
+    );
+
+/**
+ * The NtSubmitIoRing routine submits entries to an I/O ring.
+ *
+ * \param[in] IoRingHandle Handle to the I/O ring.
+ * \param[in] Flags Specifies the flags for the submission.
+ * \param[in, optional] WaitOperations The number of operations to wait for.
+ * \param[in, optional] Timeout Optional pointer to a timeout value.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/ioringapi/nf-ioringapi-submitioring
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtSubmitIoRing(
+    _In_ HANDLE IoRingHandle,
+    _In_ ULONG Flags,
+    _In_opt_ ULONG WaitOperations,
+    _In_opt_ PLARGE_INTEGER Timeout
+    );
+
+/**
+ * The NtQueryIoRingCapabilities routine queries the capabilities of I/O rings on the system.
+ *
+ * \param[in] IoRingCapabilitiesLength The size of the capabilities buffer.
+ * \param[out] IoRingCapabilities Pointer to a buffer that receives the capabilities.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/ioringapi/nf-ioringapi-queryioringcapabilities
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtQueryIoRingCapabilities(
+    _In_ SIZE_T IoRingCapabilitiesLength,
+    _Out_ PVOID IoRingCapabilities
+    );
+
+/**
+ * The NtSetInformationIoRing routine sets information for an I/O ring.
+ *
+ * \param[in] IoRingHandle Handle to the I/O ring.
+ * \param[in] IoRingInformationClass The type of information to set.
+ * \param[in] IoRingInformationLength The size of the information buffer.
+ * \param[in] IoRingInformation Pointer to a buffer that contains the information to set.
+ * \return NTSTATUS Successful or errant status.
+ * \sa https://learn.microsoft.com/en-us/windows/win32/api/ioringapi/nf-ioringapi-setioringcompletionevent
+ */
+_Kernel_entry_
+NTSYSCALLAPI
+NTSTATUS
+NTAPI
+NtSetInformationIoRing(
+    _In_ HANDLE IoRingHandle,
+    _In_ ULONG IoRingInformationClass,
+    _In_ ULONG IoRingInformationLength,
+    _In_ PVOID IoRingInformation
+    );
+#endif // (PHNT_VERSION >= PHNT_WINDOWS_11)
+
+//
+// Other types
+//
+
+typedef enum _INTERFACE_TYPE
+{
+    InterfaceTypeUndefined = -1,
+    Internal = 0,
+    Isa = 1,
+    Eisa = 2,
+    MicroChannel = 3,
+    TurboChannel = 4,
+    PCIBus = 5,
+    VMEBus = 6,
+    NuBus = 7,
+    PCMCIABus = 8,
+    CBus = 9,
+    MPIBus = 10,
+    MPSABus = 11,
+    ProcessorInternal = 12,
+    InternalPowerBus = 13,
+    PNPISABus = 14,
+    PNPBus = 15,
+    Vmcs = 16,
+    ACPIBus = 17,
+    MaximumInterfaceType
+} INTERFACE_TYPE, *PINTERFACE_TYPE;
+
+typedef enum _DMA_WIDTH
+{
+    Width8Bits,
+    Width16Bits,
+    Width32Bits,
+    Width64Bits,
+    WidthNoWrap,
+    MaximumDmaWidth
+} DMA_WIDTH, *PDMA_WIDTH;
+
+typedef enum _DMA_SPEED
+{
+    Compatible,
+    TypeA,
+    TypeB,
+    TypeC,
+    TypeF,
+    MaximumDmaSpeed
+} DMA_SPEED, *PDMA_SPEED;
+
+typedef enum _BUS_DATA_TYPE
+{
+    ConfigurationSpaceUndefined = -1,
+    Cmos,
+    EisaConfiguration,
+    Pos,
+    CbusConfiguration,
+    PCIConfiguration,
+    VMEConfiguration,
+    NuBusConfiguration,
+    PCMCIAConfiguration,
+    MPIConfiguration,
+    MPSAConfiguration,
+    PNPISAConfiguration,
+    SgiInternalConfiguration,
+    MaximumBusDataType
+} BUS_DATA_TYPE, *PBUS_DATA_TYPE;
+
+// Control structures
+
+// Reparse structure for FSCTL_SET_REPARSE_POINT, FSCTL_GET_REPARSE_POINT, FSCTL_DELETE_REPARSE_POINT
+
+#define SYMLINK_FLAG_RELATIVE 0x00000001
+#define SYMLINK_DIRECTORY 0x80000000 // If set then this is a directory symlink
+#define SYMLINK_FILE 0x40000000 // If set then this is a file symlink
+
+/**
+ * The REPARSE_DATA_BUFFER structure contains reparse point data for a Microsoft reparse point.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_reparse_data_buffer
+ */
+typedef struct _REPARSE_DATA_BUFFER
+{
+    ULONG ReparseTag;
+    USHORT ReparseDataLength;
+    USHORT Reserved;
+
+    _Field_size_bytes_(ReparseDataLength)
+    union
+    {
+        struct
+        {
+            USHORT SubstituteNameOffset;
+            USHORT SubstituteNameLength;
+            USHORT PrintNameOffset;
+            USHORT PrintNameLength;
+            ULONG Flags;
+            WCHAR PathBuffer[1];
+        } SymbolicLinkReparseBuffer;
+        struct
+        {
+            USHORT SubstituteNameOffset;
+            USHORT SubstituteNameLength;
+            USHORT PrintNameOffset;
+            USHORT PrintNameLength;
+            WCHAR PathBuffer[1];
+        } MountPointReparseBuffer;
+        struct
+        {
+            ULONG StringCount;
+            WCHAR StringList[1];
+        } AppExecLinkReparseBuffer;
+        struct
+        {
+            UCHAR DataBuffer[1];
+        } GenericReparseBuffer;
+    };
+} REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
+
+#define REPARSE_DATA_BUFFER_HEADER_SIZE UFIELD_OFFSET(REPARSE_DATA_BUFFER, GenericReparseBuffer)
+
+/**
+ * The REPARSE_DATA_BUFFER_EX structure contains reparse point data.
+ */
+typedef struct _REPARSE_DATA_BUFFER_EX
+{
+    ULONG Flags;
+
+    /**
+     * This is the existing reparse tag on the file if any, if the
+     * caller wants to replace the reparse tag too.
+     *
+     * - To set the reparse data along with the reparse tag that
+     *   could be different, pass the current reparse tag of the
+     *   file.
+     *
+     * - To update the reparse data while having the same reparse
+     *   tag, the caller should give the existing reparse tag in
+     *   this ExistingReparseTag field.
+     *
+     * - To set the reparse tag along with reparse data on a file
+     *   that doesn't have a reparse tag yet, set this to zero.
+     *
+     * If the ExistingReparseTag does not match the reparse tag on
+     * the file, the FSCTL_SET_REPARSE_POINT_EX would fail with
+     * STATUS_IO_REPARSE_TAG_MISMATCH. NOTE: If a file doesn't have
+     * a reparse tag, ExistingReparseTag should be 0.
+     */
+    ULONG ExistingReparseTag;
+
+    /**
+     * For non-Microsoft reparse tags, this is the existing reparse
+     * guid on the file if any, if the caller wants to replace the
+     * reparse tag and / or guid along with the data.
+     *
+     * If ExistingReparseTag is 0, the file is not expected to have
+     * any reparse tags, so ExistingReparseGuid is ignored. And for
+     * non-Microsoft tags ExistingReparseGuid should match the guid
+     * in the file if ExistingReparseTag is non zero.
+     */
+    GUID ExistingReparseGuid;
+
+    /** Reserved. */
+    ULONGLONG Reserved;
+
+    /** Reparse data to set. */
+    union
+    {
+        REPARSE_DATA_BUFFER ReparseDataBuffer;
+        REPARSE_GUID_DATA_BUFFER ReparseGuidDataBuffer;
+    };
+} REPARSE_DATA_BUFFER_EX, *PREPARSE_DATA_BUFFER_EX;
+
+//  REPARSE_DATA_BUFFER_EX Flags
+//
+//  REPARSE_DATA_EX_FLAG_GIVEN_TAG_OR_NONE - Forces the FSCTL to set the
+//  reparse tag if the file has no tag or the tag on the file is same as
+//  the one in  ExistingReparseTag.   NOTE: If the ExistingReparseTag is
+//  not a Microsoft tag then the ExistingReparseGuid should match if the
+//  file has the ExistingReparseTag.
+//
+#define REPARSE_DATA_EX_FLAG_GIVEN_TAG_OR_NONE              (0x00000001)
+
+#define REPARSE_GUID_DATA_BUFFER_EX_HEADER_SIZE \
+    UFIELD_OFFSET(REPARSE_DATA_BUFFER_EX, ReparseGuidDataBuffer.GenericReparseBuffer)
+
+#define REPARSE_DATA_BUFFER_EX_HEADER_SIZE \
+    UFIELD_OFFSET(REPARSE_DATA_BUFFER_EX, ReparseDataBuffer.GenericReparseBuffer)
+//
+// Named pipe FS control definitions
+//
+
+#define DEVICE_NAMED_PIPE L"\\Device\\NamedPipe\\"
+
+#define FSCTL_PIPE_ASSIGN_EVENT             CTL_CODE(FILE_DEVICE_NAMED_PIPE, 0, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_DISCONNECT               CTL_CODE(FILE_DEVICE_NAMED_PIPE, 1, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_LISTEN                   CTL_CODE(FILE_DEVICE_NAMED_PIPE, 2, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_PEEK                     CTL_CODE(FILE_DEVICE_NAMED_PIPE, 3, METHOD_BUFFERED, FILE_READ_DATA)
+#define FSCTL_PIPE_QUERY_EVENT              CTL_CODE(FILE_DEVICE_NAMED_PIPE, 4, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_TRANSCEIVE               CTL_CODE(FILE_DEVICE_NAMED_PIPE, 5, METHOD_NEITHER,  FILE_READ_DATA | FILE_WRITE_DATA)
+#define FSCTL_PIPE_WAIT                     CTL_CODE(FILE_DEVICE_NAMED_PIPE, 6, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_IMPERSONATE              CTL_CODE(FILE_DEVICE_NAMED_PIPE, 7, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_SET_CLIENT_PROCESS       CTL_CODE(FILE_DEVICE_NAMED_PIPE, 8, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_QUERY_CLIENT_PROCESS     CTL_CODE(FILE_DEVICE_NAMED_PIPE, 9, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_GET_PIPE_ATTRIBUTE       CTL_CODE(FILE_DEVICE_NAMED_PIPE, 10, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_SET_PIPE_ATTRIBUTE       CTL_CODE(FILE_DEVICE_NAMED_PIPE, 11, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_GET_CONNECTION_ATTRIBUTE CTL_CODE(FILE_DEVICE_NAMED_PIPE, 12, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_SET_CONNECTION_ATTRIBUTE CTL_CODE(FILE_DEVICE_NAMED_PIPE, 13, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_GET_HANDLE_ATTRIBUTE     CTL_CODE(FILE_DEVICE_NAMED_PIPE, 14, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_SET_HANDLE_ATTRIBUTE     CTL_CODE(FILE_DEVICE_NAMED_PIPE, 15, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define FSCTL_PIPE_FLUSH                    CTL_CODE(FILE_DEVICE_NAMED_PIPE, 16, METHOD_BUFFERED, FILE_WRITE_DATA)
+#define FSCTL_PIPE_DISABLE_IMPERSONATE      CTL_CODE(FILE_DEVICE_NAMED_PIPE, 17, METHOD_BUFFERED, FILE_ANY_ACCESS) // since REDSTONE
+#define FSCTL_PIPE_SILO_ARRIVAL             CTL_CODE(FILE_DEVICE_NAMED_PIPE, 18, METHOD_BUFFERED, FILE_WRITE_DATA) // since REDSTONE3
+#define FSCTL_PIPE_CREATE_SYMLINK           CTL_CODE(FILE_DEVICE_NAMED_PIPE, 19, METHOD_BUFFERED, FILE_SPECIAL_ACCESS) // requires SeTcbPrivilege
+#define FSCTL_PIPE_DELETE_SYMLINK           CTL_CODE(FILE_DEVICE_NAMED_PIPE, 20, METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define FSCTL_PIPE_QUERY_CLIENT_PROCESS_V2  CTL_CODE(FILE_DEVICE_NAMED_PIPE, 21, METHOD_BUFFERED, FILE_ANY_ACCESS) // since 19H1
+
+#define FSCTL_PIPE_INTERNAL_READ            CTL_CODE(FILE_DEVICE_NAMED_PIPE, 2045, METHOD_BUFFERED, FILE_READ_DATA)
+#define FSCTL_PIPE_INTERNAL_WRITE           CTL_CODE(FILE_DEVICE_NAMED_PIPE, 2046, METHOD_BUFFERED, FILE_WRITE_DATA)
+#define FSCTL_PIPE_INTERNAL_TRANSCEIVE      CTL_CODE(FILE_DEVICE_NAMED_PIPE, 2047, METHOD_NEITHER, FILE_READ_DATA | FILE_WRITE_DATA)
+#define FSCTL_PIPE_INTERNAL_READ_OVFLOW     CTL_CODE(FILE_DEVICE_NAMED_PIPE, 2048, METHOD_BUFFERED, FILE_READ_DATA)
+
+// Flags for query event
+
+#define FILE_PIPE_READ_DATA 0x00000000
+#define FILE_PIPE_WRITE_SPACE 0x00000001
+
+// Input for FSCTL_PIPE_ASSIGN_EVENT
+typedef struct _FILE_PIPE_ASSIGN_EVENT_BUFFER
+{
+    HANDLE EventHandle;
+    ULONG KeyValue;
+} FILE_PIPE_ASSIGN_EVENT_BUFFER, *PFILE_PIPE_ASSIGN_EVENT_BUFFER;
+
+// Output for FILE_PIPE_PEEK_BUFFER
+typedef struct _FILE_PIPE_PEEK_BUFFER
+{
+    ULONG NamedPipeState;
+    ULONG ReadDataAvailable;
+    ULONG NumberOfMessages;
+    ULONG MessageLength;
+    _Field_size_bytes_(MessageLength) CHAR Data[1];
+} FILE_PIPE_PEEK_BUFFER, *PFILE_PIPE_PEEK_BUFFER;
+
+// Output for FSCTL_PIPE_QUERY_EVENT
+typedef struct _FILE_PIPE_EVENT_BUFFER
+{
+    ULONG NamedPipeState;
+    ULONG EntryType;
+    ULONG ByteCount;
+    ULONG KeyValue;
+    ULONG NumberRequests;
+} FILE_PIPE_EVENT_BUFFER, *PFILE_PIPE_EVENT_BUFFER;
+
+// Input for FSCTL_PIPE_WAIT
+typedef struct _FILE_PIPE_WAIT_FOR_BUFFER
+{
+    LARGE_INTEGER Timeout;
+    ULONG NameLength;
+    BOOLEAN TimeoutSpecified;
+    _Field_size_bytes_(NameLength) WCHAR Name[1];
+} FILE_PIPE_WAIT_FOR_BUFFER, *PFILE_PIPE_WAIT_FOR_BUFFER;
+
+// Input for FSCTL_PIPE_SET_CLIENT_PROCESS, Output for FSCTL_PIPE_QUERY_CLIENT_PROCESS
+typedef struct _FILE_PIPE_CLIENT_PROCESS_BUFFER
+{
+#if !defined(BUILD_WOW6432)
+    PVOID ClientSession;
+    PVOID ClientProcess;
+#else
+    ULONGLONG ClientSession;
+    ULONGLONG ClientProcess;
+#endif
+} FILE_PIPE_CLIENT_PROCESS_BUFFER, *PFILE_PIPE_CLIENT_PROCESS_BUFFER;
+
+// Control structure for FSCTL_PIPE_QUERY_CLIENT_PROCESS_V2
+
+typedef struct _FILE_PIPE_CLIENT_PROCESS_BUFFER_V2
+{
+     ULONGLONG ClientSession;
+#if !defined(BUILD_WOW6432)
+     PVOID ClientProcess;
+#else
+     ULONGLONG ClientProcess;
+#endif
+} FILE_PIPE_CLIENT_PROCESS_BUFFER_V2, *PFILE_PIPE_CLIENT_PROCESS_BUFFER_V2;
+
+#define FILE_PIPE_COMPUTER_NAME_LENGTH 15
+
+// Input for FSCTL_PIPE_SET_CLIENT_PROCESS, Output for FSCTL_PIPE_QUERY_CLIENT_PROCESS
+typedef struct _FILE_PIPE_CLIENT_PROCESS_BUFFER_EX
+{
+#if !defined(BUILD_WOW6432)
+    PVOID ClientSession;
+    PVOID ClientProcess;
+#else
+    ULONGLONG ClientSession;
+    ULONGLONG ClientProcess;
+#endif
+    USHORT ClientComputerNameLength; // in bytes
+    WCHAR ClientComputerBuffer[FILE_PIPE_COMPUTER_NAME_LENGTH + 1]; // null-terminated
+} FILE_PIPE_CLIENT_PROCESS_BUFFER_EX, *PFILE_PIPE_CLIENT_PROCESS_BUFFER_EX;
+
+// Control structure for FSCTL_PIPE_SILO_ARRIVAL
+
+typedef struct _FILE_PIPE_SILO_ARRIVAL_INPUT
+{
+    HANDLE JobHandle;
+} FILE_PIPE_SILO_ARRIVAL_INPUT, *PFILE_PIPE_SILO_ARRIVAL_INPUT;
+
+//
+// Flags for create symlink
+//
+
+//
+// A global symlink will cause resolution of the symlink's target to occur in
+// the host silo (i.e. not in any current silo).  For example, if there is a
+// symlink at \Device\Silos\37\Device\NamedPipe\symlink then the target will be
+// resolved as \Device\NamedPipe\target instead of \Device\Silos\37\Device\NamedPipe\target
+//
+#define FILE_PIPE_SYMLINK_FLAG_GLOBAL   0x1
+
+//
+// A relative symlink will cause resolution of the symlink's target to occur relative
+// to the root of the named pipe file system.  For example, if there is a symlink at
+// \Device\NamedPipe\symlink that has a target called "target", then the target will
+// be resolved as \Device\NamedPipe\target
+//
+#define FILE_PIPE_SYMLINK_FLAG_RELATIVE 0x2
+
+#define FILE_PIPE_SYMLINK_VALID_FLAGS \
+    (FILE_PIPE_SYMLINK_FLAG_GLOBAL | FILE_PIPE_SYMLINK_FLAG_RELATIVE)
+
+// Control structure for FSCTL_PIPE_CREATE_SYMLINK
+
+typedef struct _FILE_PIPE_CREATE_SYMLINK_INPUT
+{
+    USHORT NameOffset;
+    USHORT NameLength;
+    USHORT SubstituteNameOffset;
+    USHORT SubstituteNameLength;
+    ULONG Flags;
+} FILE_PIPE_CREATE_SYMLINK_INPUT, *PFILE_PIPE_CREATE_SYMLINK_INPUT;
+
+// Control structure for FSCTL_PIPE_DELETE_SYMLINK
+
+typedef struct _FILE_PIPE_DELETE_SYMLINK_INPUT
+{
+    USHORT NameOffset;
+    USHORT NameLength;
+} FILE_PIPE_DELETE_SYMLINK_INPUT, *PFILE_PIPE_DELETE_SYMLINK_INPUT;
+
+// Mailslot FS control definitions
+
+#define MAILSLOT_CLASS_FIRSTCLASS 1
+#define MAILSLOT_CLASS_SECONDCLASS 2
+
+#define FSCTL_MAILSLOT_PEEK             CTL_CODE(FILE_DEVICE_MAILSLOT, 0, METHOD_NEITHER, FILE_READ_DATA)
+
+// Output for FSCTL_MAILSLOT_PEEK
+typedef struct _FILE_MAILSLOT_PEEK_BUFFER
+{
+    ULONG ReadDataAvailable;
+    ULONG NumberOfMessages;
+    ULONG MessageLength;
+} FILE_MAILSLOT_PEEK_BUFFER, *PFILE_MAILSLOT_PEEK_BUFFER;
+
+//
+// Mount manager FS control definitions
+//
+
+#define MOUNTMGR_DEVICE_NAME L"\\Device\\MountPointManager"
+#define MOUNTMGRCONTROLTYPE 0x0000006D // 'm'
+#define MOUNTDEVCONTROLTYPE 0x0000004D // 'M'
+
+#define IOCTL_MOUNTMGR_CREATE_POINT                 CTL_CODE(MOUNTMGRCONTROLTYPE, 0, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_MOUNTMGR_DELETE_POINTS                CTL_CODE(MOUNTMGRCONTROLTYPE, 1, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_MOUNTMGR_QUERY_POINTS                 CTL_CODE(MOUNTMGRCONTROLTYPE, 2, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_MOUNTMGR_DELETE_POINTS_DBONLY         CTL_CODE(MOUNTMGRCONTROLTYPE, 3, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_MOUNTMGR_NEXT_DRIVE_LETTER            CTL_CODE(MOUNTMGRCONTROLTYPE, 4, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_MOUNTMGR_AUTO_DL_ASSIGNMENTS          CTL_CODE(MOUNTMGRCONTROLTYPE, 5, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_MOUNTMGR_VOLUME_MOUNT_POINT_CREATED   CTL_CODE(MOUNTMGRCONTROLTYPE, 6, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_MOUNTMGR_VOLUME_MOUNT_POINT_DELETED   CTL_CODE(MOUNTMGRCONTROLTYPE, 7, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_MOUNTMGR_CHANGE_NOTIFY                CTL_CODE(MOUNTMGRCONTROLTYPE, 8, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_MOUNTMGR_KEEP_LINKS_WHEN_OFFLINE      CTL_CODE(MOUNTMGRCONTROLTYPE, 9, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_MOUNTMGR_CHECK_UNPROCESSED_VOLUMES    CTL_CODE(MOUNTMGRCONTROLTYPE, 10, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_MOUNTMGR_VOLUME_ARRIVAL_NOTIFICATION  CTL_CODE(MOUNTMGRCONTROLTYPE, 11, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_MOUNTMGR_QUERY_DOS_VOLUME_PATH        CTL_CODE(MOUNTMGRCONTROLTYPE, 12, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_MOUNTMGR_QUERY_DOS_VOLUME_PATHS       CTL_CODE(MOUNTMGRCONTROLTYPE, 13, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_MOUNTMGR_SCRUB_REGISTRY               CTL_CODE(MOUNTMGRCONTROLTYPE, 14, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_MOUNTMGR_QUERY_AUTO_MOUNT             CTL_CODE(MOUNTMGRCONTROLTYPE, 15, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_MOUNTMGR_SET_AUTO_MOUNT               CTL_CODE(MOUNTMGRCONTROLTYPE, 16, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_MOUNTMGR_BOOT_DL_ASSIGNMENT           CTL_CODE(MOUNTMGRCONTROLTYPE, 17, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS) // since WIN7
+#define IOCTL_MOUNTMGR_TRACELOG_CACHE               CTL_CODE(MOUNTMGRCONTROLTYPE, 18, METHOD_BUFFERED, FILE_READ_ACCESS)
+#define IOCTL_MOUNTMGR_PREPARE_VOLUME_DELETE        CTL_CODE(MOUNTMGRCONTROLTYPE, 19, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS)
+#define IOCTL_MOUNTMGR_CANCEL_VOLUME_DELETE         CTL_CODE(MOUNTMGRCONTROLTYPE, 20, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS) // since WIN8
+#define IOCTL_MOUNTMGR_SILO_ARRIVAL                 CTL_CODE(MOUNTMGRCONTROLTYPE, 21, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS) // since RS1
+
+#define IOCTL_MOUNTDEV_QUERY_DEVICE_NAME            CTL_CODE(MOUNTDEVCONTROLTYPE, 2, METHOD_BUFFERED, FILE_ANY_ACCESS)
+
+/**
+ * The MOUNTMGR_CREATE_POINT_INPUT structure is used by a mount manager client to send a symbolic link name and a device name to the mount manager.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/mountmgr/ns-mountmgr-_mountmgr_create_point_input
+ */
+typedef struct _MOUNTMGR_CREATE_POINT_INPUT
+{
+    USHORT SymbolicLinkNameOffset;
+    USHORT SymbolicLinkNameLength;
+    USHORT DeviceNameOffset;
+    USHORT DeviceNameLength;
+} MOUNTMGR_CREATE_POINT_INPUT, *PMOUNTMGR_CREATE_POINT_INPUT;
+
+/**
+ * The MOUNTMGR_MOUNT_POINT structure is used by mount manager clients to store information about a mount point.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/mountmgr/ns-mountmgr-_mountmgr_mount_point
+ */
+typedef struct _MOUNTMGR_MOUNT_POINT
+{
+    ULONG SymbolicLinkNameOffset;
+    USHORT SymbolicLinkNameLength;
+    USHORT Reserved1;
+    ULONG UniqueIdOffset;
+    USHORT UniqueIdLength;
+    USHORT Reserved2;
+    ULONG DeviceNameOffset;
+    USHORT DeviceNameLength;
+    USHORT Reserved3;
+} MOUNTMGR_MOUNT_POINT, *PMOUNTMGR_MOUNT_POINT;
+
+/**
+ * The MOUNTMGR_MOUNT_POINTS structure is used by the mount manager to send a list of mount points to a client.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/mountmgr/ns-mountmgr-_mountmgr_mount_points
+ */
+_Struct_size_bytes_(Size)
+typedef struct _MOUNTMGR_MOUNT_POINTS
+{
+    ULONG Size;
+    ULONG NumberOfMountPoints;
+    _Field_size_(NumberOfMountPoints) MOUNTMGR_MOUNT_POINT MountPoints[1];
+} MOUNTMGR_MOUNT_POINTS, *PMOUNTMGR_MOUNT_POINTS;
+
+/**
+ * The MOUNTMGR_DRIVE_LETTER_TARGET structure is used by a mount manager client to send a non-persistent device name to the mount manager.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/mountmgr/ns-mountmgr-_mountmgr_drive_letter_target
+ */
+typedef struct _MOUNTMGR_DRIVE_LETTER_TARGET
+{
+    USHORT DeviceNameLength;
+    _Field_size_bytes_(DeviceNameLength) WCHAR DeviceName[1];
+} MOUNTMGR_DRIVE_LETTER_TARGET, *PMOUNTMGR_DRIVE_LETTER_TARGET;
+
+/**
+ * The MOUNTMGR_DRIVE_LETTER_INFORMATION structure is used by the mount manager to provide a drive letter to a client.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/mountmgr/ns-mountmgr-_mountmgr_drive_letter_information
+ */
+typedef struct _MOUNTMGR_DRIVE_LETTER_INFORMATION
+{
+    BOOLEAN DriveLetterWasAssigned;
+    UCHAR CurrentDriveLetter;
+} MOUNTMGR_DRIVE_LETTER_INFORMATION, *PMOUNTMGR_DRIVE_LETTER_INFORMATION;
+
+/**
+ * The MOUNTMGR_VOLUME_MOUNT_POINT structure is used by a mount manager client to send a volume mount point to the mount manager.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/mountmgr/ns-mountmgr-_mountmgr_volume_mount_point
+ */
+typedef struct _MOUNTMGR_VOLUME_MOUNT_POINT
+{
+    USHORT SourceVolumeNameOffset;
+    USHORT SourceVolumeNameLength;
+    USHORT TargetVolumeNameOffset;
+    USHORT TargetVolumeNameLength;
+} MOUNTMGR_VOLUME_MOUNT_POINT, *PMOUNTMGR_VOLUME_MOUNT_POINT;
+
+/**
+ * The MOUNTMGR_CHANGE_NOTIFY_INFO structure is used by the mount manager to provide information about a change in the mount manager's mount point database.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/mountmgr/ns-mountmgr-_mountmgr_change_notify_info
+ */
+typedef struct _MOUNTMGR_CHANGE_NOTIFY_INFO
+{
+    ULONG EpicNumber;
+} MOUNTMGR_CHANGE_NOTIFY_INFO, *PMOUNTMGR_CHANGE_NOTIFY_INFO;
+
+/**
+ * The MOUNTMGR_TARGET_NAME structure is used by mount manager clients to send a target name to the mount manager.
+ * \sa https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/mountmgr/ns-mountmgr-_mountmgr_target_name
+ */
+typedef struct _MOUNTMGR_TARGET_NAME
+{
+    USHORT DeviceNameLength;
+    _Field_size_bytes_(DeviceNameLength) WCHAR DeviceName[1];
+} MOUNTMGR_TARGET_NAME, *PMOUNTMGR_TARGET_NAME;
+
+/**
+ * The MOUNTMGR_AUTO_MOUNT_STATE enumeration type specifies whether auto-mount is enabled or disabled.
+ */
+typedef enum _MOUNTMGR_AUTO_MOUNT_STATE
+{
+    Disabled = 0,
+    Enabled
+} MOUNTMGR_AUTO_MOUNT_STATE;
+
+/**
+ * The MOUNTMGR_QUERY_AUTO_MOUNT structure is used to query the current auto-mount setting.
+ */
+typedef struct _MOUNTMGR_QUERY_AUTO_MOUNT
+{
+    MOUNTMGR_AUTO_MOUNT_STATE CurrentState;
+} MOUNTMGR_QUERY_AUTO_MOUNT, *PMOUNTMGR_QUERY_AUTO_MOUNT;
+
+/**
+ * The MOUNTMGR_SET_AUTO_MOUNT structure is used to set the auto-mount setting.
+ */
+typedef struct _MOUNTMGR_SET_AUTO_MOUNT
+{
+    MOUNTMGR_AUTO_MOUNT_STATE NewState;
+} MOUNTMGR_SET_AUTO_MOUNT, *PMOUNTMGR_SET_AUTO_MOUNT;
+
+/**
+ * The MOUNTMGR_SILO_ARRIVAL_INPUT structure is used to notify the mount manager about a silo arrival.
+ */
+typedef struct _MOUNTMGR_SILO_ARRIVAL_INPUT
+{
+    HANDLE JobHandle;
+} MOUNTMGR_SILO_ARRIVAL_INPUT, *PMOUNTMGR_SILO_ARRIVAL_INPUT;
+
+// Macro that defines what a "drive letter" mount point is.  This macro can
+// be used to scan the result from QUERY_POINTS to discover which mount points
+// are find "drive letter" mount points.
+#define MOUNTMGR_IS_DRIVE_LETTER(s) ( \
+    (s)->Length == 28 && \
+    (s)->Buffer[0] == '\\' && \
+    (s)->Buffer[1] == 'D' && \
+    (s)->Buffer[2] == 'o' && \
+    (s)->Buffer[3] == 's' && \
+    (s)->Buffer[4] == 'D' && \
+    (s)->Buffer[5] == 'e' && \
+    (s)->Buffer[6] == 'v' && \
+    (s)->Buffer[7] == 'i' && \
+    (s)->Buffer[8] == 'c' && \
+    (s)->Buffer[9] == 'e' && \
+    (s)->Buffer[10] == 's' && \
+    (s)->Buffer[11] == '\\' && \
+    (s)->Buffer[12] >= 'A' && \
+    (s)->Buffer[12] <= 'Z' && \
+    (s)->Buffer[13] == ':')
+
+// Macro that defines what a "volume name" mount point is.  This macro can
+// be used to scan the result from QUERY_POINTS to discover which mount points
+// are "volume name" mount points.
+#define MOUNTMGR_IS_VOLUME_NAME(s) ( \
+     ((s)->Length == 96 || ((s)->Length == 98 && (s)->Buffer[48] == '\\')) && \
+     (s)->Buffer[0] == '\\' && \
+     ((s)->Buffer[1] == '?' || (s)->Buffer[1] == '\\') && \
+     (s)->Buffer[2] == '?' && \
+     (s)->Buffer[3] == '\\' && \
+     (s)->Buffer[4] == 'V' && \
+     (s)->Buffer[5] == 'o' && \
+     (s)->Buffer[6] == 'l' && \
+     (s)->Buffer[7] == 'u' && \
+     (s)->Buffer[8] == 'm' && \
+     (s)->Buffer[9] == 'e' && \
+     (s)->Buffer[10] == '{' && \
+     (s)->Buffer[19] == '-' && \
+     (s)->Buffer[24] == '-' && \
+     (s)->Buffer[29] == '-' && \
+     (s)->Buffer[34] == '-' && \
+     (s)->Buffer[47] == '}')
+
+// Output structure for IOCTL_MOUNTDEV_QUERY_DEVICE_NAME.
+typedef struct _MOUNTDEV_NAME
+{
+    USHORT NameLength;
+    _Field_size_bytes_(NameLength) WCHAR Name[1];
+} MOUNTDEV_NAME, *PMOUNTDEV_NAME;
+
+// Output structure for IOCTL_MOUNTMGR_QUERY_DOS_VOLUME_PATH and IOCTL_MOUNTMGR_QUERY_DOS_VOLUME_PATHS.
+typedef struct _MOUNTMGR_VOLUME_PATHS
+{
+    ULONG MultiSzLength;
+    _Field_size_bytes_(MultiSzLength) WCHAR MultiSz[1];
+} MOUNTMGR_VOLUME_PATHS, *PMOUNTMGR_VOLUME_PATHS;
+
+#define MOUNTMGR_IS_DOS_VOLUME_NAME(s) ( \
+     MOUNTMGR_IS_VOLUME_NAME(s) && \
+     (s)->Length == 96 && \
+     (s)->Buffer[1] == '\\')
+
+#define MOUNTMGR_IS_DOS_VOLUME_NAME_WB(s) ( \
+     MOUNTMGR_IS_VOLUME_NAME(s) && \
+     (s)->Length == 98 && \
+     (s)->Buffer[1] == '\\')
+
+#define MOUNTMGR_IS_NT_VOLUME_NAME(s) ( \
+     MOUNTMGR_IS_VOLUME_NAME(s) && \
+     (s)->Length == 96 && \
+     (s)->Buffer[1] == '?')
+
+#define MOUNTMGR_IS_NT_VOLUME_NAME_WB(s) ( \
+     MOUNTMGR_IS_VOLUME_NAME(s) && \
+     (s)->Length == 98 && \
+     (s)->Buffer[1] == '?')
+
+//
+// Filter manager
+//
+
+#define FLT_PORT_CONNECT 0x0001
+#define FLT_PORT_ALL_ACCESS (FLT_PORT_CONNECT | STANDARD_RIGHTS_ALL)
+
+// rev
+#define FLT_SYMLINK_NAME     L"\\Global??\\FltMgr"
+#define FLT_MSG_SYMLINK_NAME L"\\Global??\\FltMgrMsg"
+#define FLT_DEVICE_NAME      L"\\FileSystem\\Filters\\FltMgr"
+#define FLT_MSG_DEVICE_NAME  L"\\FileSystem\\Filters\\FltMgrMsg"
+
+// private
+typedef struct _FLT_CONNECT_CONTEXT
+{
+    PUNICODE_STRING PortName;
+    PUNICODE_STRING64 PortName64;
+    USHORT SizeOfContext;
+    UCHAR Padding[6]; // unused
+    _Field_size_bytes_(SizeOfContext) UCHAR Context[ANYSIZE_ARRAY];
+} FLT_CONNECT_CONTEXT, *PFLT_CONNECT_CONTEXT;
+
+// rev
+#define FLT_PORT_EA_NAME "FLTPORT"
+#define FLT_PORT_CONTEXT_MAX 0xFFE8
+
+// combined FILE_FULL_EA_INFORMATION and FLT_CONNECT_CONTEXT
+typedef struct _FLT_PORT_FULL_EA
+{
+    ULONG NextEntryOffset; // 0
+    UCHAR Flags;           // 0
+    UCHAR EaNameLength;    // sizeof(FLT_PORT_EA_NAME) - sizeof(ANSI_NULL)
+    USHORT EaValueLength;  // RTL_SIZEOF_THROUGH_FIELD(FLT_CONNECT_CONTEXT, Padding) + SizeOfContext
+    CHAR EaName[8];        // FLTPORT\0
+    FLT_CONNECT_CONTEXT EaValue;
+} FLT_PORT_FULL_EA, *PFLT_PORT_FULL_EA;
+
+#define FLT_PORT_FULL_EA_SIZE \
+    (sizeof(FILE_FULL_EA_INFORMATION) + (sizeof(FLT_PORT_EA_NAME) - sizeof(ANSI_NULL)))
+#define FLT_PORT_FULL_EA_VALUE_SIZE \
+    RTL_SIZEOF_THROUGH_FIELD(FLT_CONNECT_CONTEXT, Padding)
+
+// begin_rev
+
+// IOCTLs for unlinked FltMgr handles
+#define FLT_CTL_LOAD                CTL_CODE(FILE_DEVICE_DISK_FILE_SYSTEM, 1, METHOD_BUFFERED, FILE_WRITE_ACCESS) // in: FLT_LOAD_PARAMETERS // requires SeLoadDriverPrivilege
+#define FLT_CTL_UNLOAD              CTL_CODE(FILE_DEVICE_DISK_FILE_SYSTEM, 2, METHOD_BUFFERED, FILE_WRITE_ACCESS) // in: FLT_LOAD_PARAMETERS // requires SeLoadDriverPrivilege
+#define FLT_CTL_LINK_HANDLE         CTL_CODE(FILE_DEVICE_DISK_FILE_SYSTEM, 3, METHOD_BUFFERED, FILE_READ_ACCESS)  // in: FLT_LINK // specializes the handle
+#define FLT_CTL_ATTACH              CTL_CODE(FILE_DEVICE_DISK_FILE_SYSTEM, 4, METHOD_BUFFERED, FILE_WRITE_ACCESS) // in: FLT_ATTACH
+#define FLT_CTL_DETACH              CTL_CODE(FILE_DEVICE_DISK_FILE_SYSTEM, 5, METHOD_BUFFERED, FILE_WRITE_ACCESS) // in: FLT_INSTANCE_PARAMETERS
+
+// IOCTLs for port-specific FltMgrMsg handles (opened using the extended attribute)
+#define FLT_CTL_SEND_MESSAGE        CTL_CODE(FILE_DEVICE_DISK_FILE_SYSTEM, 6, METHOD_NEITHER, FILE_WRITE_ACCESS)  // in, out: filter-specific
+#define FLT_CTL_GET_MESSAGE         CTL_CODE(FILE_DEVICE_DISK_FILE_SYSTEM, 7, METHOD_NEITHER, FILE_READ_ACCESS)   // out: filter-specific
+#define FLT_CTL_REPLY_MESSAGE       CTL_CODE(FILE_DEVICE_DISK_FILE_SYSTEM, 8, METHOD_NEITHER, FILE_WRITE_ACCESS)  // in: filter-specific
+
+// IOCTLs for linked FltMgr handles; depend on previously used FLT_LINK_TYPE
+//
+// Find first/next:
+//   FILTER                - enumerates nested instances; in: INSTANCE_INFORMATION_CLASS
+//   FILTER_VOLUME         - enumerates nested instances; in: INSTANCE_INFORMATION_CLASS
+//   FILTER_MANAGER        - enumerates all filters;      in: FILTER_INFORMATION_CLASS
+//   FILTER_MANAGER_VOLUME - enumerates all volumes;      in: FILTER_VOLUME_INFORMATION_CLASS
+//
+// Get information:
+//   FILTER                - queries filter;              in: FILTER_INFORMATION_CLASS
+//   FILTER_INSTANCE       - queries instance;            in: INSTANCE_INFORMATION_CLASS
+//
+#define FLT_CTL_FIND_FIRST          CTL_CODE(FILE_DEVICE_DISK_FILE_SYSTEM, 9, METHOD_BUFFERED, FILE_READ_ACCESS)  // in: *_INFORMATION_CLASS, out: *_INFORMATION (from fltUserStructures.h)
+#define FLT_CTL_FIND_NEXT           CTL_CODE(FILE_DEVICE_DISK_FILE_SYSTEM, 10, METHOD_BUFFERED, FILE_READ_ACCESS) // in: *_INFORMATION_CLASS, out: *_INFORMATION (from fltUserStructures.h)
+#define FLT_CTL_GET_INFORMATION     CTL_CODE(FILE_DEVICE_DISK_FILE_SYSTEM, 11, METHOD_BUFFERED, FILE_READ_ACCESS) // in: *_INFORMATION_CLASS, out: *_INFORMATION (from fltUserStructures.h)
+
+// end_rev
+
+// private
+typedef struct _FLT_LOAD_PARAMETERS
+{
+    USHORT FilterNameSize;
+    _Field_size_bytes_(FilterNameSize) WCHAR FilterName[ANYSIZE_ARRAY];
+} FLT_LOAD_PARAMETERS, *PFLT_LOAD_PARAMETERS;
+
+// private
+typedef enum _FLT_LINK_TYPE
+{
+    FILTER = 0,                // FLT_FILTER_PARAMETERS
+    FILTER_INSTANCE = 1,       // FLT_INSTANCE_PARAMETERS
+    FILTER_VOLUME = 2,         // FLT_VOLUME_PARAMETERS
+    FILTER_MANAGER = 3,        // nothing
+    FILTER_MANAGER_VOLUME = 4, // nothing
+} FLT_LINK_TYPE, *PFLT_LINK_TYPE;
+
+// private
+typedef struct _FLT_LINK
+{
+    FLT_LINK_TYPE Type;
+    ULONG ParametersOffset; // from this struct
+} FLT_LINK, *PFLT_LINK;
+
+// rev
+typedef struct _FLT_FILTER_PARAMETERS
+{
+    USHORT FilterNameSize;
+    USHORT FilterNameOffset; // to WCHAR[] from this struct
+} FLT_FILTER_PARAMETERS, *PFLT_FILTER_PARAMETERS;
+
+// private
+typedef struct _FLT_INSTANCE_PARAMETERS
+{
+    USHORT FilterNameSize;
+    USHORT FilterNameOffset; // to WCHAR[] from this struct
+    USHORT VolumeNameSize;
+    USHORT VolumeNameOffset; // to WCHAR[] from this struct
+    USHORT InstanceNameSize;
+    USHORT InstanceNameOffset; // to WCHAR[] from this struct
+} FLT_INSTANCE_PARAMETERS, *PFLT_INSTANCE_PARAMETERS;
+
+// rev
+typedef struct _FLT_VOLUME_PARAMETERS
+{
+    USHORT VolumeNameSize;
+    USHORT VolumeNameOffset; // to WCHAR[] from this struct
+} FLT_VOLUME_PARAMETERS, *PFLT_VOLUME_PARAMETERS;
+
+// private
+typedef enum _ATTACH_TYPE
+{
+    AltitudeBased = 0,
+    InstanceNameBased = 1,
+} ATTACH_TYPE, *PATTACH_TYPE;
+
+// private
+typedef struct _FLT_ATTACH
+{
+    USHORT FilterNameSize;
+    USHORT FilterNameOffset; // to WCHAR[] from this struct
+    USHORT VolumeNameSize;
+    USHORT VolumeNameOffset; // to WCHAR[] from this struct
+    ATTACH_TYPE Type;
+    USHORT InstanceNameSize;
+    USHORT InstanceNameOffset; // to WCHAR[] from this struct
+    USHORT AltitudeSize;
+    USHORT AltitudeOffset; // to WCHAR[] from this struct
+} FLT_ATTACH, *PFLT_ATTACH;
+
+//
+// Multiple UNC Provider
+//
+
+// rev // FSCTLs for \Device\Mup
+#define FSCTL_MUP_GET_UNC_CACHE_INFO                CTL_CODE(FILE_DEVICE_MULTI_UNC_PROVIDER, 11, METHOD_BUFFERED, FILE_ANY_ACCESS) // out: MUP_FSCTL_UNC_CACHE_INFORMATION
+#define FSCTL_MUP_GET_UNC_PROVIDER_LIST             CTL_CODE(FILE_DEVICE_MULTI_UNC_PROVIDER, 12, METHOD_BUFFERED, FILE_ANY_ACCESS) // out: MUP_FSCTL_UNC_PROVIDER_INFORMATION
+#define FSCTL_MUP_GET_SURROGATE_PROVIDER_LIST       CTL_CODE(FILE_DEVICE_MULTI_UNC_PROVIDER, 13, METHOD_BUFFERED, FILE_ANY_ACCESS) // out: MUP_FSCTL_SURROGATE_PROVIDER_INFORMATION
+#define FSCTL_MUP_GET_UNC_HARDENING_CONFIGURATION   CTL_CODE(FILE_DEVICE_MULTI_UNC_PROVIDER, 14, METHOD_BUFFERED, FILE_ANY_ACCESS) // out: MUP_FSCTL_UNC_HARDENING_PREFIX_TABLE_ENTRY[]
+#define FSCTL_MUP_GET_UNC_HARDENING_CONFIGURATION_FOR_PATH  CTL_CODE(FILE_DEVICE_MULTI_UNC_PROVIDER, 15, METHOD_BUFFERED, FILE_ANY_ACCESS) // in: MUP_FSCTL_QUERY_UNC_HARDENING_CONFIGURATION_IN; out: MUP_FSCTL_QUERY_UNC_HARDENING_CONFIGURATION_OUT
+
+// private
+typedef struct _MUP_FSCTL_UNC_CACHE_ENTRY
+{
+    ULONG TotalLength;
+    ULONG UncNameOffset; // to WCHAR[] from this struct
+    USHORT UncNameLength; // in bytes
+    ULONG ProviderNameOffset; // to WCHAR[] from this struct
+    USHORT ProviderNameLength; // in bytes
+    ULONG SurrogateNameOffset; // to WCHAR[] from this struct
+    USHORT SurrogateNameLength; // in bytes
+    ULONG ProviderPriority;
+    ULONG EntryTtl;
+    WCHAR Strings[ANYSIZE_ARRAY];
+} MUP_FSCTL_UNC_CACHE_ENTRY, *PMUP_FSCTL_UNC_CACHE_ENTRY;
+
+// private
+typedef struct _MUP_FSCTL_UNC_CACHE_INFORMATION
+{
+    ULONG MaxCacheSize;
+    ULONG CurrentCacheSize;
+    ULONG EntryTimeout;
+    ULONG TotalEntries;
+    MUP_FSCTL_UNC_CACHE_ENTRY CacheEntry[ANYSIZE_ARRAY];
+} MUP_FSCTL_UNC_CACHE_INFORMATION, *PMUP_FSCTL_UNC_CACHE_INFORMATION;
+
+// private
+typedef struct _MUP_FSCTL_UNC_PROVIDER_ENTRY
+{
+    ULONG TotalLength;
+    LONG ReferenceCount;
+    ULONG ProviderPriority;
+    ULONG ProviderState;
+    ULONG ProviderId;
+    USHORT ProviderNameLength; // in bytes
+    WCHAR ProviderName[ANYSIZE_ARRAY];
+} MUP_FSCTL_UNC_PROVIDER_ENTRY, *PMUP_FSCTL_UNC_PROVIDER_ENTRY;
+
+// private
+typedef struct _MUP_FSCTL_UNC_PROVIDER_INFORMATION
+{
+    ULONG TotalEntries;
+    MUP_FSCTL_UNC_PROVIDER_ENTRY ProviderEntry[ANYSIZE_ARRAY];
+} MUP_FSCTL_UNC_PROVIDER_INFORMATION, *PMUP_FSCTL_UNC_PROVIDER_INFORMATION;
+
+// private
+typedef struct _MUP_FSCTL_SURROGATE_PROVIDER_ENTRY
+{
+    ULONG TotalLength;
+    LONG ReferenceCount;
+    ULONG SurrogateType;
+    ULONG SurrogateState;
+    ULONG SurrogatePriority;
+    USHORT SurrogateNameLength; // in bytes
+    WCHAR SurrogateName[ANYSIZE_ARRAY];
+} MUP_FSCTL_SURROGATE_PROVIDER_ENTRY, *PMUP_FSCTL_SURROGATE_PROVIDER_ENTRY;
+
+// private
+typedef struct _MUP_FSCTL_SURROGATE_PROVIDER_INFORMATION
+{
+    ULONG TotalEntries;
+    MUP_FSCTL_SURROGATE_PROVIDER_ENTRY SurrogateEntry[ANYSIZE_ARRAY];
+} MUP_FSCTL_SURROGATE_PROVIDER_INFORMATION, *PMUP_FSCTL_SURROGATE_PROVIDER_INFORMATION;
+
+// private
+typedef struct _MUP_FSCTL_UNC_HARDENING_PREFIX_TABLE_ENTRY
+{
+    ULONG NextOffset; // from this struct
+    ULONG PrefixNameOffset; // to WCHAR[] from this struct
+    USHORT PrefixNameCbLength; // in bytes
+    union
+    {
+        ULONG RequiredHardeningCapabilities;
+        struct
+        {
+            ULONG RequiresMutualAuth : 1;
+            ULONG RequiresIntegrity : 1;
+            ULONG RequiresPrivacy : 1;
+        };
+    };
+    ULONGLONG OpenCount;
+} MUP_FSCTL_UNC_HARDENING_PREFIX_TABLE_ENTRY, *PMUP_FSCTL_UNC_HARDENING_PREFIX_TABLE_ENTRY;
+
+// private
+typedef struct _MUP_FSCTL_QUERY_UNC_HARDENING_CONFIGURATION_IN
+{
+    ULONG Size;
+    ULONG UncPathOffset; // to WCHAR[] from this struct
+    USHORT UncPathCbLength; // in bytes
+} MUP_FSCTL_QUERY_UNC_HARDENING_CONFIGURATION_IN, *PMUP_FSCTL_QUERY_UNC_HARDENING_CONFIGURATION_IN;
+
+// private
+typedef struct _MUP_FSCTL_QUERY_UNC_HARDENING_CONFIGURATION_OUT
+{
+    ULONG Size;
+    union
+    {
+        ULONG RequiredHardeningCapabilities;
+        struct
+        {
+            ULONG RequiresMutualAuth : 1;
+            ULONG RequiresIntegrity : 1;
+            ULONG RequiresPrivacy : 1;
+        };
+    };
+} MUP_FSCTL_QUERY_UNC_HARDENING_CONFIGURATION_OUT, *PMUP_FSCTL_QUERY_UNC_HARDENING_CONFIGURATION_OUT;
+
+#if (PHNT_MODE != PHNT_MODE_KERNEL)
+
+//
+// Major Function Codes
+//
+#define IRP_MJ_CREATE                                0x00
+#define IRP_MJ_CREATE_NAMED_PIPE                     0x01
+#define IRP_MJ_CLOSE                                 0x02
+#define IRP_MJ_READ                                  0x03
+#define IRP_MJ_WRITE                                 0x04
+#define IRP_MJ_QUERY_INFORMATION                     0x05
+#define IRP_MJ_SET_INFORMATION                       0x06
+#define IRP_MJ_QUERY_EA                              0x07
+#define IRP_MJ_SET_EA                                0x08
+#define IRP_MJ_FLUSH_BUFFERS                         0x09
+#define IRP_MJ_QUERY_VOLUME_INFORMATION              0x0a
+#define IRP_MJ_SET_VOLUME_INFORMATION                0x0b
+#define IRP_MJ_DIRECTORY_CONTROL                     0x0c
+#define IRP_MJ_FILE_SYSTEM_CONTROL                   0x0d
+#define IRP_MJ_DEVICE_CONTROL                        0x0e
+#define IRP_MJ_INTERNAL_DEVICE_CONTROL               0x0f
+#define IRP_MJ_SHUTDOWN                              0x10
+#define IRP_MJ_LOCK_CONTROL                          0x11
+#define IRP_MJ_CLEANUP                               0x12
+#define IRP_MJ_CREATE_MAILSLOT                       0x13
+#define IRP_MJ_QUERY_SECURITY                        0x14
+#define IRP_MJ_SET_SECURITY                          0x15
+#define IRP_MJ_POWER                                 0x16
+#define IRP_MJ_SYSTEM_CONTROL                        0x17
+#define IRP_MJ_DEVICE_CHANGE                         0x18
+#define IRP_MJ_QUERY_QUOTA                           0x19
+#define IRP_MJ_SET_QUOTA                             0x1a
+#define IRP_MJ_PNP                                   0x1b
+#define IRP_MJ_PNP_POWER                             IRP_MJ_PNP      // Obsolete....
+#define IRP_MJ_MAXIMUM_FUNCTION                      0x1b
+#define IRP_MJ_ACQUIRE_FOR_SECTION_SYNCHRONIZATION   ((UCHAR)-1)
+#define IRP_MJ_RELEASE_FOR_SECTION_SYNCHRONIZATION   ((UCHAR)-2)
+#define IRP_MJ_ACQUIRE_FOR_MOD_WRITE                 ((UCHAR)-3)
+#define IRP_MJ_RELEASE_FOR_MOD_WRITE                 ((UCHAR)-4)
+#define IRP_MJ_ACQUIRE_FOR_CC_FLUSH                  ((UCHAR)-5)
+#define IRP_MJ_RELEASE_FOR_CC_FLUSH                  ((UCHAR)-6)
+#define IRP_MJ_QUERY_OPEN                            ((UCHAR)-7)
+#define IRP_MJ_FAST_IO_CHECK_IF_POSSIBLE             ((UCHAR)-13)
+#define IRP_MJ_NETWORK_QUERY_OPEN                    ((UCHAR)-14)
+#define IRP_MJ_MDL_READ                              ((UCHAR)-15)
+#define IRP_MJ_MDL_READ_COMPLETE                     ((UCHAR)-16)
+#define IRP_MJ_PREPARE_MDL_WRITE                     ((UCHAR)-17)
+#define IRP_MJ_MDL_WRITE_COMPLETE                    ((UCHAR)-18)
+#define IRP_MJ_VOLUME_MOUNT                          ((UCHAR)-19)
+#define IRP_MJ_VOLUME_DISMOUNT                       ((UCHAR)-20)
+#define FLT_INTERNAL_OPERATION_COUNT                 22
+
+//
+// Minor Function Codes
+//
+#define IRP_MN_SCSI_CLASS                   0x01
+// PNP minor function codes
+#define IRP_MN_START_DEVICE                 0x00
+#define IRP_MN_QUERY_REMOVE_DEVICE          0x01
+#define IRP_MN_REMOVE_DEVICE                0x02
+#define IRP_MN_CANCEL_REMOVE_DEVICE         0x03
+#define IRP_MN_STOP_DEVICE                  0x04
+#define IRP_MN_QUERY_STOP_DEVICE            0x05
+#define IRP_MN_CANCEL_STOP_DEVICE           0x06
+#define IRP_MN_QUERY_DEVICE_RELATIONS       0x07
+#define IRP_MN_QUERY_INTERFACE              0x08
+#define IRP_MN_QUERY_CAPABILITIES           0x09
+#define IRP_MN_QUERY_RESOURCES              0x0A
+#define IRP_MN_QUERY_RESOURCE_REQUIREMENTS  0x0B
+#define IRP_MN_QUERY_DEVICE_TEXT            0x0C
+#define IRP_MN_FILTER_RESOURCE_REQUIREMENTS 0x0D
+#define IRP_MN_READ_CONFIG                  0x0F
+#define IRP_MN_WRITE_CONFIG                 0x10
+#define IRP_MN_EJECT                        0x11
+#define IRP_MN_SET_LOCK                     0x12
+#define IRP_MN_QUERY_ID                     0x13
+#define IRP_MN_QUERY_PNP_DEVICE_STATE       0x14
+#define IRP_MN_QUERY_BUS_INFORMATION        0x15
+#define IRP_MN_DEVICE_USAGE_NOTIFICATION    0x16
+#define IRP_MN_SURPRISE_REMOVAL             0x17
+#define IRP_MN_DEVICE_ENUMERATED            0x19
+
+// POWER minor function codes
+#define IRP_MN_WAIT_WAKE                    0x00
+#define IRP_MN_POWER_SEQUENCE               0x01
+#define IRP_MN_SET_POWER                    0x02
+#define IRP_MN_QUERY_POWER                  0x03
+// WMI minor function codes under IRP_MJ_SYSTEM_CONTROL
+#define IRP_MN_QUERY_ALL_DATA               0x00
+#define IRP_MN_QUERY_SINGLE_INSTANCE        0x01
+#define IRP_MN_CHANGE_SINGLE_INSTANCE       0x02
+#define IRP_MN_CHANGE_SINGLE_ITEM           0x03
+#define IRP_MN_ENABLE_EVENTS                0x04
+#define IRP_MN_DISABLE_EVENTS               0x05
+#define IRP_MN_ENABLE_COLLECTION            0x06
+#define IRP_MN_DISABLE_COLLECTION           0x07
+#define IRP_MN_REGINFO                      0x08
+#define IRP_MN_EXECUTE_METHOD               0x09
+// Minor code 0x0a is reserved
+#define IRP_MN_REGINFO_EX                   0x0b
+// Minor code 0x0c is reserved
+// Minor code 0x0d is reserved
+
+//
+// Filter Manager Callback Data Flags
+//
+#define FLTFL_CALLBACK_DATA_REISSUE_MASK        0x0000FFFF
+#define FLTFL_CALLBACK_DATA_IRP_OPERATION       0x00000001 // Set for Irp operations
+#define FLTFL_CALLBACK_DATA_FAST_IO_OPERATION   0x00000002 // Set for Fast Io operations
+#define FLTFL_CALLBACK_DATA_FS_FILTER_OPERATION 0x00000004 // Set for Fs Filter operations
+#define FLTFL_CALLBACK_DATA_SYSTEM_BUFFER       0x00000008 // Set if the buffer passed in for the i/o was a system buffer
+#define FLTFL_CALLBACK_DATA_GENERATED_IO        0x00010000 // Set if this is I/O generated by a mini-filter
+#define FLTFL_CALLBACK_DATA_REISSUED_IO         0x00020000 // Set if this I/O was reissued
+#define FLTFL_CALLBACK_DATA_DRAINING_IO         0x00040000 // set if this operation is being drained. If set,
+#define FLTFL_CALLBACK_DATA_POST_OPERATION      0x00080000 // Set if this is a POST operation
+#define FLTFL_CALLBACK_DATA_NEW_SYSTEM_BUFFER   0x00100000
+#define FLTFL_CALLBACK_DATA_DIRTY               0x80000000 // Set by caller if parameters were changed
+
+//
+// IRP Flags
+//
+#define IRP_NOCACHE                     0x00000001
+#define IRP_PAGING_IO                   0x00000002
+#define IRP_MOUNT_COMPLETION            0x00000002
+#define IRP_SYNCHRONOUS_API             0x00000004
+#define IRP_ASSOCIATED_IRP              0x00000008
+#define IRP_BUFFERED_IO                 0x00000010
+#define IRP_DEALLOCATE_BUFFER           0x00000020
+#define IRP_INPUT_OPERATION             0x00000040
+#define IRP_SYNCHRONOUS_PAGING_IO       0x00000040
+#define IRP_CREATE_OPERATION            0x00000080
+#define IRP_READ_OPERATION              0x00000100
+#define IRP_WRITE_OPERATION             0x00000200
+#define IRP_CLOSE_OPERATION             0x00000400
+#define IRP_DEFER_IO_COMPLETION         0x00000800
+#define IRP_OB_QUERY_NAME               0x00001000
+#define IRP_HOLD_DEVICE_QUEUE           0x00002000
+#define IRP_UM_DRIVER_INITIATED_IO      0x00400000
+
+//
+// File Object Flags
+//
+#define FO_FILE_OPEN                    0x00000001
+#define FO_SYNCHRONOUS_IO               0x00000002
+#define FO_ALERTABLE_IO                 0x00000004
+#define FO_NO_INTERMEDIATE_BUFFERING    0x00000008
+#define FO_WRITE_THROUGH                0x00000010
+#define FO_SEQUENTIAL_ONLY              0x00000020
+#define FO_CACHE_SUPPORTED              0x00000040
+#define FO_NAMED_PIPE                   0x00000080
+#define FO_STREAM_FILE                  0x00000100
+#define FO_MAILSLOT                     0x00000200
+#define FO_GENERATE_AUDIT_ON_CLOSE      0x00000400
+#define FO_QUEUE_IRP_TO_THREAD          FO_GENERATE_AUDIT_ON_CLOSE
+#define FO_DIRECT_DEVICE_OPEN           0x00000800
+#define FO_FILE_MODIFIED                0x00001000
+#define FO_FILE_SIZE_CHANGED            0x00002000
+#define FO_CLEANUP_COMPLETE             0x00004000
+#define FO_TEMPORARY_FILE               0x00008000
+#define FO_DELETE_ON_CLOSE              0x00010000
+#define FO_OPENED_CASE_SENSITIVE        0x00020000
+#define FO_HANDLE_CREATED               0x00040000
+#define FO_FILE_FAST_IO_READ            0x00080000
+#define FO_RANDOM_ACCESS                0x00100000
+#define FO_FILE_OPEN_CANCELLED          0x00200000
+#define FO_VOLUME_OPEN                  0x00400000
+#define FO_BYPASS_IO_ENABLED            0x00800000  //when set BYPASS IO is enabled on this handle
+#define FO_REMOTE_ORIGIN                0x01000000
+#define FO_DISALLOW_EXCLUSIVE           0x02000000
+#define FO_SKIP_COMPLETION_PORT         FO_DISALLOW_EXCLUSIVE
+#define FO_SKIP_SET_EVENT               0x04000000
+#define FO_SKIP_SET_FAST_IO             0x08000000
+#define FO_INDIRECT_WAIT_OBJECT         0x10000000
+#define FO_SECTION_MINSTORE_TREATMENT   0x20000000
+
+//
+// Define stack location (IO_STACK_LOCATION) flags
+//
+#define SL_PENDING_RETURNED                0x01
+#define SL_ERROR_RETURNED                  0x02
+#define SL_INVOKE_ON_CANCEL                0x20
+#define SL_INVOKE_ON_SUCCESS               0x40
+#define SL_INVOKE_ON_ERROR                 0x80
+// Create / Create Named Pipe (IRP_MJ_CREATE/IRP_MJ_CREATE_NAMED_PIPE)
+#define SL_FORCE_ACCESS_CHECK              0x01
+#define SL_OPEN_PAGING_FILE                0x02
+#define SL_OPEN_TARGET_DIRECTORY           0x04
+#define SL_STOP_ON_SYMLINK                 0x08
+#define SL_IGNORE_READONLY_ATTRIBUTE       0x40
+#define SL_CASE_SENSITIVE                  0x80
+// Read / Write (IRP_MJ_READ/IRP_MJ_WRITE)
+#define SL_KEY_SPECIFIED                   0x01
+#define SL_OVERRIDE_VERIFY_VOLUME          0x02
+#define SL_WRITE_THROUGH                   0x04
+#define SL_FT_SEQUENTIAL_WRITE             0x08
+#define SL_FORCE_DIRECT_WRITE              0x10
+#define SL_REALTIME_STREAM                 0x20    // valid only with optical media
+#define SL_PERSISTENT_MEMORY_FIXED_MAPPING 0x20    // valid only with persistent memory device and IRP_MJ_WRITE
+#define SL_BYPASS_IO                       0x40
+//  IRP_MJ_FLUSH_BUFFERS
+#define SL_FORCE_ASYNCHRONOUS              0x01
+// Device I/O Control
+#define SL_READ_ACCESS_GRANTED             0x01
+#define SL_WRITE_ACCESS_GRANTED            0x04    // Gap for SL_OVERRIDE_VERIFY_VOLUME
+// Lock (IRP_MJ_LOCK_CONTROL)
+#define SL_FAIL_IMMEDIATELY                0x01
+#define SL_EXCLUSIVE_LOCK                  0x02
+// QueryDirectory / QueryEa / QueryQuota (IRP_MJ_DIRECTORY_CONTROL/IRP_MJ_QUERY_EA/IRP_MJ_QUERY_QUOTA))
+#define SL_RESTART_SCAN                    0x01
+#define SL_RETURN_SINGLE_ENTRY             0x02
+#define SL_INDEX_SPECIFIED                 0x04
+#define SL_RETURN_ON_DISK_ENTRIES_ONLY     0x08
+#define SL_NO_CURSOR_UPDATE                0x10
+#define SL_QUERY_DIRECTORY_MASK            0x1b
+// NotifyDirectory (IRP_MJ_DIRECTORY_CONTROL)
+#define SL_WATCH_TREE                      0x01
+// FileSystemControl (IRP_MJ_FILE_SYSTEM_CONTROL)
+#define SL_ALLOW_RAW_MOUNT                 0x01
+//  SetInformationFile (IRP_MJ_SET_INFORMATION) / QueryInformationFile
+#define SL_BYPASS_ACCESS_CHECK             0x01
+#define SL_INFO_FORCE_ACCESS_CHECK         0x01
+#define SL_INFO_IGNORE_READONLY_ATTRIBUTE  0x40  // same value as IO_IGNORE_READONLY_ATTRIBUTE
+
+//
+// Device Object (DO) flags
+//
+#define DO_VERIFY_VOLUME                0x00000002
+#define DO_BUFFERED_IO                  0x00000004
+#define DO_EXCLUSIVE                    0x00000008
+#define DO_DIRECT_IO                    0x00000010
+#define DO_MAP_IO_BUFFER                0x00000020
+#define DO_DEVICE_INITIALIZING          0x00000080
+#define DO_SHUTDOWN_REGISTERED          0x00000800
+#define DO_BUS_ENUMERATED_DEVICE        0x00001000
+#define DO_POWER_PAGABLE                0x00002000
+#define DO_POWER_INRUSH                 0x00004000
+#define DO_DEVICE_TO_BE_RESET           0x04000000
+#define DO_DAX_VOLUME                   0x10000000
+
+// pub
+typedef enum _FS_FILTER_SECTION_SYNC_TYPE
+{
+    SyncTypeOther = 0,
+    SyncTypeCreateSection
+} FS_FILTER_SECTION_SYNC_TYPE, *PFS_FILTER_SECTION_SYNC_TYPE;
+
+//pub
+typedef enum _CREATE_FILE_TYPE
+{
+    CreateFileTypeNone,
+    CreateFileTypeNamedPipe,
+    CreateFileTypeMailslot
+} CREATE_FILE_TYPE;
+
+// pub
+typedef struct _NAMED_PIPE_CREATE_PARAMETERS
+{
+    ULONG NamedPipeType;
+    ULONG ReadMode;
+    ULONG CompletionMode;
+    ULONG MaximumInstances;
+    ULONG InboundQuota;
+    ULONG OutboundQuota;
+    LARGE_INTEGER DefaultTimeout;
+    BOOLEAN TimeoutSpecified;
+} NAMED_PIPE_CREATE_PARAMETERS, *PNAMED_PIPE_CREATE_PARAMETERS;
+
+// pub
+typedef struct _MAILSLOT_CREATE_PARAMETERS
+{
+    ULONG MailslotQuota;
+    ULONG MaximumMessageSize;
+    LARGE_INTEGER ReadTimeout;
+    BOOLEAN TimeoutSpecified;
+} MAILSLOT_CREATE_PARAMETERS, *PMAILSLOT_CREATE_PARAMETERS;
+
+// pub
+typedef struct _OPLOCK_KEY_ECP_CONTEXT
+{
+    GUID OplockKey;
+    ULONG Reserved;
+} OPLOCK_KEY_ECP_CONTEXT, *POPLOCK_KEY_ECP_CONTEXT;
+
+// pub
+typedef struct _OPLOCK_KEY_CONTEXT
+{
+    USHORT Version;        //  OPLOCK_KEY_VERSION_*
+    USHORT Flags;          //  OPLOCK_KEY_FLAG_*
+    GUID ParentOplockKey;
+    GUID TargetOplockKey;
+    ULONG Reserved;
+} OPLOCK_KEY_CONTEXT, *POPLOCK_KEY_CONTEXT;
+
+#define OPLOCK_KEY_VERSION_WIN7    0x0001
+#define OPLOCK_KEY_VERSION_WIN8    0x0002
+
+#define OPLOCK_KEY_FLAG_PARENT_KEY 0x0001
+#define OPLOCK_KEY_FLAG_TARGET_KEY 0x0002
+
+// pub
+#define SUPPORTED_FS_FEATURES_OFFLOAD_READ    0x00000001
+#define SUPPORTED_FS_FEATURES_OFFLOAD_WRITE   0x00000002
+#define SUPPORTED_FS_FEATURES_QUERY_OPEN      0x00000004
+#define SUPPORTED_FS_FEATURES_BYPASS_IO       0x00000008
+
+// WIN11
+#define SUPPORTED_FS_FEATURES_VALID_MASK_V3 (SUPPORTED_FS_FEATURES_OFFLOAD_READ | \
+                                               SUPPORTED_FS_FEATURES_OFFLOAD_WRITE | \
+                                               SUPPORTED_FS_FEATURES_QUERY_OPEN | \
+                                               SUPPORTED_FS_FEATURES_BYPASS_IO)
+// WIN10-RS2
+#define SUPPORTED_FS_FEATURES_VALID_MASK_V2 (SUPPORTED_FS_FEATURES_OFFLOAD_READ | \
+                                               SUPPORTED_FS_FEATURES_OFFLOAD_WRITE | \
+                                               SUPPORTED_FS_FEATURES_QUERY_OPEN)
+// WIN8
+#define SUPPORTED_FS_FEATURES_VALID_MASK_V1 (SUPPORTED_FS_FEATURES_OFFLOAD_READ | \
+                                               SUPPORTED_FS_FEATURES_OFFLOAD_WRITE)
+
+#define SUPPORTED_FS_FEATURES_VALID_MASK SUPPORTED_FS_FEATURES_VALID_MASK_V3
+
+#endif // (PHNT_MODE != PHNT_MODE_KERNEL)
+
+#endif // _NTIOAPI_H

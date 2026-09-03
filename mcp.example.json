@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "system-informer": {
+      "command": "C:\\Users\\agrma\\Desktop\\SystemInformerMcp\\simcp\\build\\si-mcp.exe",
+      "env": {
+        "SYSTEMINFORMER_PATH": "C:\\Program Files\\SystemInformer"
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+name: Bug report
+description: Report something that isn't working
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to file a bug! Please fill out the details below.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+      placeholder: Calling `list_processes` returns ...
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: The tool call (name + arguments) or client action that triggers it.
+      render: json
+    validations:
+      required: true
+  - type: input
+    id: elevation
+    attributes:
+      label: Running elevated?
+      description: Output of the `server_status` tool helps a lot.
+      placeholder: "elevated: true, osBuild: 26100"
+  - type: input
+    id: client
+    attributes:
+      label: MCP client
+      placeholder: "Claude Code / Cursor / Claude Desktop / custom"
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: "Windows 11 24H2 (build 26100)"

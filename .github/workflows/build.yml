@@ -1,0 +1,42 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build (MSVC, x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build si-mcp.exe
+        shell: cmd
+        run: build.bat
+
+      - name: Verify the server starts and lists tools
+        shell: pwsh
+        run: |
+          $init  = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}'
+          $list  = '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+          $out = ($init, $list) | & .\build\si-mcp.exe
+          $out | Out-String | Write-Host
+          if (-not ($out -match '"system-informer"')) { throw "initialize response missing serverInfo" }
+          if (-not ($out -match '"list_processes"'))   { throw "tools/list did not include expected tools" }
+          Write-Host "Smoke test passed."
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: si-mcp-x64
+          path: build/si-mcp.exe
+          if-no-files-found: error

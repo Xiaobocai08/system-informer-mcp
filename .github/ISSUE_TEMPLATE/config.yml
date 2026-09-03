@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question / discussion
+    url: https://github.com/Xiaobocai08/system-informer-mcp/discussions
+    about: Ask a question or share how you're using system-informer-mcp.

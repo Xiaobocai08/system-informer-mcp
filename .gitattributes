@@ -1,0 +1,10 @@
+# Normalize line endings: check out with native EOLs, store LF in the repo.
+* text=auto
+
+# Windows-only scripts should keep CRLF on checkout.
+*.bat  text eol=crlf
+
+# Treat these as binary (no EOL conversion / diffing).
+*.png  binary
+*.exe  binary
+*.dmp  binary
