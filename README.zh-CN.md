@@ -9,12 +9,16 @@
 一个轻量、原生的 **Model Context Protocol（模型上下文协议）** 服务器 —— 用 C 语言编写，约 350 KB，零运行时依赖 —— 让大模型像人类使用 System Informer 图形界面那样检查和控制 Windows：进程、线程、内存、句柄、服务、网络、驱动、窗口等等。
 
 [![build](https://github.com/Xiaobocai08/system-informer-mcp/actions/workflows/build.yml/badge.svg)](https://github.com/Xiaobocai08/system-informer-mcp/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/Xiaobocai08/system-informer-mcp?label=release&color=blue)](https://github.com/Xiaobocai08/system-informer-mcp/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Xiaobocai08/system-informer-mcp/total?color=success)](https://github.com/Xiaobocai08/system-informer-mcp/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6?logo=windows&logoColor=white)](https://github.com/Xiaobocai08/system-informer-mcp)
 [![Language: C](https://img.shields.io/badge/language-C-A8B9CC?logo=c&logoColor=white)](https://github.com/Xiaobocai08/system-informer-mcp)
 [![MCP](https://img.shields.io/badge/Model_Context_Protocol-compatible-6E56CF)](https://modelcontextprotocol.io)
 [![Tools](https://img.shields.io/badge/tools-54-brightgreen)](#全部-54-个工具)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+**[⬇ 下载预编译的 `si-mcp.exe`（v1.0.0，x64）](https://github.com/Xiaobocai08/system-informer-mcp/releases/latest)** —— 无需编译器
 
 [English](README.md) | 简体中文
 
@@ -65,9 +69,11 @@ flowchart LR
 
 ## 快速开始
 
-### 1. 编译
+### 1. 获取程序
 
-需要 **Visual Studio 2022**（或免费的 Build Tools），勾选 *使用 C++ 的桌面开发* 工作负载以及 Windows 10/11 SDK。除此之外别无所需 —— 不需要 CMake，不需要包管理器。
+**方式 A —— 直接下载（推荐）。** 从 [最新 Release](https://github.com/Xiaobocai08/system-informer-mcp/releases/latest) 下载 `si-mcp-v1.0.0-windows-x64.exe`，放到任意位置即可。单个约 340 KB 的文件，无任何依赖。附带 `SHA256SUMS.txt` 供校验。
+
+**方式 B —— 从源码编译。** 需要 **Visual Studio 2022**（或免费的 Build Tools），勾选 *使用 C++ 的桌面开发* 工作负载以及 Windows 10/11 SDK。除此之外别无所需 —— 不需要 CMake，不需要包管理器。
 
 ```bat
 git clone https://github.com/Xiaobocai08/system-informer-mcp.git

@@ -9,12 +9,16 @@
 A lightweight, native **Model Context Protocol** server — written in C, ~350 KB, zero runtime dependencies — that lets an LLM inspect and control Windows the same way a human does through the System Informer GUI: processes, threads, memory, handles, services, network, drivers, windows and more.
 
 [![build](https://github.com/Xiaobocai08/system-informer-mcp/actions/workflows/build.yml/badge.svg)](https://github.com/Xiaobocai08/system-informer-mcp/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/Xiaobocai08/system-informer-mcp?label=release&color=blue)](https://github.com/Xiaobocai08/system-informer-mcp/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Xiaobocai08/system-informer-mcp/total?color=success)](https://github.com/Xiaobocai08/system-informer-mcp/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6?logo=windows&logoColor=white)](https://github.com/Xiaobocai08/system-informer-mcp)
 [![Language: C](https://img.shields.io/badge/language-C-A8B9CC?logo=c&logoColor=white)](https://github.com/Xiaobocai08/system-informer-mcp)
 [![MCP](https://img.shields.io/badge/Model_Context_Protocol-compatible-6E56CF)](https://modelcontextprotocol.io)
-[![Tools](https://img.shields.io/badge/tools-54-brightgreen)](#-all-54-tools)
+[![Tools](https://img.shields.io/badge/tools-54-brightgreen)](#all-54-tools)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+**[⬇ Download the prebuilt `si-mcp.exe` (v1.0.0, x64)](https://github.com/Xiaobocai08/system-informer-mcp/releases/latest)** — no compiler needed
 
 English | [简体中文](README.zh-CN.md)
 
@@ -65,9 +69,11 @@ flowchart LR
 
 ## Quick start
 
-### 1. Build
+### 1. Get the binary
 
-Requires **Visual Studio 2022** (or the free Build Tools) with the *Desktop development with C++* workload and a Windows 10/11 SDK. Nothing else — no CMake, no package manager.
+**Option A — download (recommended).** Grab `si-mcp-v1.0.0-windows-x64.exe` from the [latest release](https://github.com/Xiaobocai08/system-informer-mcp/releases/latest) and put it anywhere. It is a single ~340 KB file with no dependencies. `SHA256SUMS.txt` is provided for verification.
+
+**Option B — build from source.** Requires **Visual Studio 2022** (or the free Build Tools) with the *Desktop development with C++* workload and a Windows 10/11 SDK. Nothing else — no CMake, no package manager.
 
 ```bat
 git clone https://github.com/Xiaobocai08/system-informer-mcp.git

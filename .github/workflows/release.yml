@@ -1,0 +1,53 @@
+name: release
+
+# Pushing a tag like v1.2.3 builds si-mcp.exe on a clean Windows runner and
+# publishes it (plus a SHA-256 checksum) as a GitHub Release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish (MSVC, x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build si-mcp.exe
+        shell: cmd
+        run: build.bat
+
+      - name: Smoke test
+        shell: pwsh
+        run: |
+          $init = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}'
+          $list = '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+          $out = ($init, $list) | & .\build\si-mcp.exe
+          if (-not ($out -match '"list_processes"')) { throw "tools/list did not include expected tools" }
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $name = "si-mcp-$tag-windows-x64.exe"
+          Copy-Item build\si-mcp.exe "dist\$name"
+          $hash = (Get-FileHash "dist\$name" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $name" | Set-Content -Path dist\SHA256SUMS.txt -Encoding ascii
+          Get-Content dist\SHA256SUMS.txt
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+            dist/SHA256SUMS.txt
+          generate_release_notes: true
